@@ -37,6 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# instruções de IA (uso local, não faz parte do produto)
+CLAUDE.md
+AGENTS.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
