@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { extractTextFromFile } from "@/lib/extract-text";
-import { analyzeCompatibility } from "@/lib/gemini";
+import { analyzeCompatibility, toPreview } from "@/lib/gemini";
+import { saveAnalysis } from "@/lib/analysis-store";
 
 export const runtime = "nodejs";
 
@@ -71,7 +73,13 @@ export async function POST(request: Request) {
 
     const result = await analyzeCompatibility(resumeText, jobDescription);
 
-    return NextResponse.json({ result });
+    const session = await auth();
+    if (session?.user) {
+      return NextResponse.json({ result });
+    }
+
+    const analysisId = saveAnalysis(result);
+    return NextResponse.json({ analysisId, preview: toPreview(result) });
   } catch (error) {
     console.error("Erro ao analisar currículo:", error);
     const message =

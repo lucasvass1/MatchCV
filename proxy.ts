@@ -4,7 +4,16 @@ import { auth } from "@/lib/auth";
 const AUTH_ROUTES = ["/login", "/register"];
 
 export default auth((req) => {
-  const isAuthRoute = AUTH_ROUTES.includes(req.nextUrl.pathname);
+  const { pathname } = req.nextUrl;
+
+  if (pathname.startsWith("/api/analysis")) {
+    if (!req.auth) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
+    return NextResponse.next();
+  }
+
+  const isAuthRoute = AUTH_ROUTES.includes(pathname);
 
   if (isAuthRoute && req.auth) {
     return NextResponse.redirect(new URL("/", req.nextUrl));
@@ -12,5 +21,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/login", "/register"],
+  matcher: ["/login", "/register", "/api/analysis/:path*"],
 };

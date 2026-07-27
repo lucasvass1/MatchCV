@@ -11,6 +11,21 @@ export type AnalysisResult = {
   weaknesses: string[];
 };
 
+// Subconjunto seguro para exibir a usuários não autenticados: nenhum campo
+// que revele a análise completa (explicação, lacunas, pontos fracos) sai do
+// servidor antes do login.
+export type AnalysisPreview = {
+  score: number;
+  keywordsMatchedPreview: string[];
+};
+
+export function toPreview(result: AnalysisResult): AnalysisPreview {
+  return {
+    score: result.score,
+    keywordsMatchedPreview: result.keywordsMatched.slice(0, 3),
+  };
+}
+
 const responseSchema = {
   type: Type.OBJECT,
   properties: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Lock, AlertCircle, Loader2 } from "lucide-react";
-import type { AnalysisResult } from "@/lib/gemini";
+import type { AnalysisPreview, AnalysisResult } from "@/lib/gemini";
 
 const ACCEPTED_EXTENSIONS = ".pdf,.docx";
-const PENDING_RESULT_KEY = "matchcv:pendingAnalysisResult";
+const PENDING_ANALYSIS_ID_KEY = "matchcv:pendingAnalysisId";
 
 export function AnalysisWorkspace() {
   const { status } = useSession();
@@ -30,23 +30,43 @@ export function AnalysisWorkspace() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [preview, setPreview] = useState<AnalysisPreview | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : sessionStorage.getItem(PENDING_ANALYSIS_ID_KEY)
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Recupera a análise feita antes do login (salva no navegador) para não
-  // obrigar o usuário a refazer o upload depois de criar a conta. Ajustar o
-  // estado durante a renderização evita uma renderização em cascata; a
-  // condição `!result` garante que isso só acontece uma vez, pois setResult
-  // torna a condição falsa nas próximas renderizações.
-  if (isAuthenticated && !result) {
-    const pending = sessionStorage.getItem(PENDING_RESULT_KEY);
-    if (pending) {
-      try {
-        setResult(JSON.parse(pending) as AnalysisResult);
-      } catch {
-        sessionStorage.removeItem(PENDING_RESULT_KEY);
-      }
-    }
-  }
+  const isClaiming = isAuthenticated && pendingId !== null && !result;
+
+  // Depois do login, troca o id da análise anônima (salvo no navegador) pelo
+  // resultado completo no servidor — nenhum dado protegido chega a ficar no
+  // navegador antes da autenticação.
+  useEffect(() => {
+    if (!isClaiming || !pendingId) return;
+
+    fetch(`/api/analysis/${pendingId}`)
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error ?? "Não foi possível recuperar a análise.");
+        }
+        setResult(data.result as AnalysisResult);
+        setPreview(null);
+      })
+      .catch((err) => {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Não foi possível recuperar sua análise anterior."
+        );
+      })
+      .finally(() => {
+        sessionStorage.removeItem(PENDING_ANALYSIS_ID_KEY);
+        setPendingId(null);
+      });
+  }, [isClaiming, pendingId]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -63,6 +83,7 @@ export function AnalysisWorkspace() {
 
     setIsLoading(true);
     setResult(null);
+    setPreview(null);
 
     try {
       const formData = new FormData();
@@ -80,16 +101,14 @@ export function AnalysisWorkspace() {
         throw new Error(data.error ?? "Não foi possível concluir a análise.");
       }
 
-      const analysisResult = data.result as AnalysisResult;
-      setResult(analysisResult);
-
-      if (!isAuthenticated) {
-        sessionStorage.setItem(
-          PENDING_RESULT_KEY,
-          JSON.stringify(analysisResult)
-        );
+      if (isAuthenticated) {
+        setResult(data.result as AnalysisResult);
+        sessionStorage.removeItem(PENDING_ANALYSIS_ID_KEY);
+        setPendingId(null);
       } else {
-        sessionStorage.removeItem(PENDING_RESULT_KEY);
+        setPreview(data.preview as AnalysisPreview);
+        sessionStorage.setItem(PENDING_ANALYSIS_ID_KEY, data.analysisId as string);
+        setPendingId(data.analysisId as string);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
@@ -153,120 +172,172 @@ export function AnalysisWorkspace() {
         </CardContent>
       </Card>
 
-      {result && (
-        <AnalysisResultPreview result={result} isAuthenticated={isAuthenticated} />
+      {isClaiming && (
+        <Card>
+          <CardContent className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Recuperando sua análise...
+          </CardContent>
+        </Card>
       )}
+
+      {result && <FullResultCard result={result} />}
+      {!result && preview && <PreviewResultCard preview={preview} />}
     </div>
   );
 }
 
-function AnalysisResultPreview({
-  result,
-  isAuthenticated,
-}: {
-  result: AnalysisResult;
-  isAuthenticated: boolean;
-}) {
+function FullResultCard({ result }: { result: AnalysisResult }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Resultado da análise</CardTitle>
-        <CardDescription>
-          {isAuthenticated
-            ? "Análise completa da sua compatibilidade"
-            : "Prévia gratuita da sua compatibilidade"}
-        </CardDescription>
+        <CardDescription>Análise completa da sua compatibilidade</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm font-medium text-muted-foreground">
-              Compatibilidade
-            </span>
-            <span className="text-3xl font-bold">{result.score}%</span>
-          </div>
-          <Progress value={result.score} />
-        </div>
+        <ScoreBlock score={result.score} />
 
         {result.keywordsMatched.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              Algumas palavras-chave encontradas
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {result.keywordsMatched.slice(0, 3).map((keyword) => (
-                <Badge key={keyword} variant="secondary">
+          <MatchedKeywordsBlock keywords={result.keywordsMatched.slice(0, 3)} />
+        )}
+
+        <div className="space-y-4 rounded-lg border p-4">
+          <div>
+            <p className="text-sm font-semibold">Explicação do score</p>
+            <p className="text-sm text-muted-foreground">{result.summary}</p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Palavras-chave ausentes</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {result.keywordsMissing.map((keyword) => (
+                <Badge key={keyword} variant="outline">
                   {keyword}
                 </Badge>
               ))}
             </div>
           </div>
+          <div>
+            <p className="text-sm font-semibold">Pontos fortes</p>
+            <ul className="list-disc pl-5 text-sm text-muted-foreground">
+              {result.strengths.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Pontos fracos</p>
+            <ul className="list-disc pl-5 text-sm text-muted-foreground">
+              {result.weaknesses.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PreviewResultCard({ preview }: { preview: AnalysisPreview }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Resultado da análise</CardTitle>
+        <CardDescription>Prévia gratuita da sua compatibilidade</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        <ScoreBlock score={preview.score} />
+
+        {preview.keywordsMatchedPreview.length > 0 && (
+          <MatchedKeywordsBlock keywords={preview.keywordsMatchedPreview} />
         )}
 
         <div className="relative overflow-hidden rounded-lg border">
           <div
-            aria-hidden={!isAuthenticated}
-            className={
-              isAuthenticated
-                ? "space-y-4 p-4"
-                : "pointer-events-none select-none space-y-4 p-4 blur-sm"
-            }
+            aria-hidden
+            className="pointer-events-none select-none space-y-4 p-4 blur-sm"
           >
             <div>
               <p className="text-sm font-semibold">Explicação do score</p>
-              <p className="text-sm text-muted-foreground">{result.summary}</p>
+              <p className="text-sm text-muted-foreground">
+                Lorem ipsum dolor sit amet consectetur adipiscing elit sed do.
+              </p>
             </div>
             <div>
               <p className="text-sm font-semibold">Palavras-chave ausentes</p>
               <div className="flex flex-wrap gap-2 pt-1">
-                {result.keywordsMissing.map((keyword) => (
-                  <Badge key={keyword} variant="outline">
-                    {keyword}
-                  </Badge>
-                ))}
+                <Badge variant="outline">••••••</Badge>
+                <Badge variant="outline">••••••</Badge>
               </div>
             </div>
             <div>
               <p className="text-sm font-semibold">Pontos fortes</p>
               <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                {result.strengths.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
+                <li>Lorem ipsum dolor sit amet</li>
+                <li>Consectetur adipiscing elit</li>
               </ul>
             </div>
             <div>
               <p className="text-sm font-semibold">Pontos fracos</p>
               <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                {result.weaknesses.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
+                <li>Lorem ipsum dolor sit amet</li>
+                <li>Consectetur adipiscing elit</li>
               </ul>
             </div>
           </div>
 
-          {!isAuthenticated && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 p-6 text-center">
-              <Lock className="size-6 text-muted-foreground" />
-              <p className="max-w-xs text-sm font-medium">
-                Crie sua conta para desbloquear a análise completa
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  nativeButton={false}
-                  render={<Link href="/login" />}
-                >
-                  Entrar
-                </Button>
-                <Button size="sm" nativeButton={false} render={<Link href="/register" />}>
-                  Criar conta
-                </Button>
-              </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 p-6 text-center">
+            <Lock className="size-6 text-muted-foreground" />
+            <p className="max-w-xs text-sm font-medium">
+              Crie sua conta para desbloquear a análise completa
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                nativeButton={false}
+                render={<Link href="/login" />}
+              >
+                Entrar
+              </Button>
+              <Button size="sm" nativeButton={false} render={<Link href="/register" />}>
+                Criar conta
+              </Button>
             </div>
-          )}
+          </div>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ScoreBlock({ score }: { score: number }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm font-medium text-muted-foreground">
+          Compatibilidade
+        </span>
+        <span className="text-3xl font-bold">{score}%</span>
+      </div>
+      <Progress value={score} />
+    </div>
+  );
+}
+
+function MatchedKeywordsBlock({ keywords }: { keywords: string[] }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm font-medium text-muted-foreground">
+        Algumas palavras-chave encontradas
+      </span>
+      <div className="flex flex-wrap gap-2">
+        {keywords.map((keyword) => (
+          <Badge key={keyword} variant="secondary">
+            {keyword}
+          </Badge>
+        ))}
+      </div>
+    </div>
   );
 }
