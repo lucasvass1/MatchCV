@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,14 +19,34 @@ import { Lock, AlertCircle, Loader2 } from "lucide-react";
 import type { AnalysisResult } from "@/lib/gemini";
 
 const ACCEPTED_EXTENSIONS = ".pdf,.docx";
+const PENDING_RESULT_KEY = "matchcv:pendingAnalysisResult";
 
 export function AnalysisWorkspace() {
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
+
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Recupera a análise feita antes do login (salva no navegador) para não
+  // obrigar o usuário a refazer o upload depois de criar a conta. Ajustar o
+  // estado durante a renderização evita uma renderização em cascata; a
+  // condição `!result` garante que isso só acontece uma vez, pois setResult
+  // torna a condição falsa nas próximas renderizações.
+  if (isAuthenticated && !result) {
+    const pending = sessionStorage.getItem(PENDING_RESULT_KEY);
+    if (pending) {
+      try {
+        setResult(JSON.parse(pending) as AnalysisResult);
+      } catch {
+        sessionStorage.removeItem(PENDING_RESULT_KEY);
+      }
+    }
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -58,7 +80,17 @@ export function AnalysisWorkspace() {
         throw new Error(data.error ?? "Não foi possível concluir a análise.");
       }
 
-      setResult(data.result as AnalysisResult);
+      const analysisResult = data.result as AnalysisResult;
+      setResult(analysisResult);
+
+      if (!isAuthenticated) {
+        sessionStorage.setItem(
+          PENDING_RESULT_KEY,
+          JSON.stringify(analysisResult)
+        );
+      } else {
+        sessionStorage.removeItem(PENDING_RESULT_KEY);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
@@ -121,17 +153,29 @@ export function AnalysisWorkspace() {
         </CardContent>
       </Card>
 
-      {result && <AnalysisResultPreview result={result} />}
+      {result && (
+        <AnalysisResultPreview result={result} isAuthenticated={isAuthenticated} />
+      )}
     </div>
   );
 }
 
-function AnalysisResultPreview({ result }: { result: AnalysisResult }) {
+function AnalysisResultPreview({
+  result,
+  isAuthenticated,
+}: {
+  result: AnalysisResult;
+  isAuthenticated: boolean;
+}) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Resultado da análise</CardTitle>
-        <CardDescription>Prévia gratuita da sua compatibilidade</CardDescription>
+        <CardDescription>
+          {isAuthenticated
+            ? "Análise completa da sua compatibilidade"
+            : "Prévia gratuita da sua compatibilidade"}
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
@@ -161,8 +205,12 @@ function AnalysisResultPreview({ result }: { result: AnalysisResult }) {
 
         <div className="relative overflow-hidden rounded-lg border">
           <div
-            aria-hidden
-            className="pointer-events-none select-none space-y-4 p-4 blur-sm"
+            aria-hidden={!isAuthenticated}
+            className={
+              isAuthenticated
+                ? "space-y-4 p-4"
+                : "pointer-events-none select-none space-y-4 p-4 blur-sm"
+            }
           >
             <div>
               <p className="text-sm font-semibold">Explicação do score</p>
@@ -196,15 +244,22 @@ function AnalysisResultPreview({ result }: { result: AnalysisResult }) {
             </div>
           </div>
 
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 p-6 text-center">
-            <Lock className="size-6 text-muted-foreground" />
-            <p className="max-w-xs text-sm font-medium">
-              Crie sua conta para desbloquear a análise completa
-            </p>
-            <Button size="sm" disabled>
-              Login em breve
-            </Button>
-          </div>
+          {!isAuthenticated && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 p-6 text-center">
+              <Lock className="size-6 text-muted-foreground" />
+              <p className="max-w-xs text-sm font-medium">
+                Crie sua conta para desbloquear a análise completa
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" render={<Link href="/login" />}>
+                  Entrar
+                </Button>
+                <Button size="sm" render={<Link href="/register" />}>
+                  Criar conta
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
