@@ -251,10 +251,15 @@ function AnalysisResultPreview({
                 Crie sua conta para desbloquear a análise completa
               </p>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" render={<Link href="/login" />}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  nativeButton={false}
+                  render={<Link href="/login" />}
+                >
                   Entrar
                 </Button>
-                <Button size="sm" render={<Link href="/register" />}>
+                <Button size="sm" nativeButton={false} render={<Link href="/register" />}>
                   Criar conta
                 </Button>
               </div>
