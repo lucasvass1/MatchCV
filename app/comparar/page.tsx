@@ -11,8 +11,8 @@ export default async function CompararPage() {
   const analyses = await listAnalysesForUser(userId);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 bg-zinc-50 px-4 py-10 dark:bg-black sm:px-8">
-      <div className="flex flex-col gap-1">
+    <div className="flex flex-1 flex-col items-center gap-6 bg-zinc-50 px-4 py-10 dark:bg-black sm:px-8">
+      <div className="flex w-full max-w-3xl flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">Comparar versões</h1>
         <p className="text-sm text-muted-foreground">
           Veja a evolução da sua compatibilidade entre duas análises já feitas.

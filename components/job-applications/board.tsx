@@ -85,7 +85,7 @@ export function JobApplicationsBoard({
           começar a acompanhar suas aplicações.
         </div>
       ) : (
-        <div className="grid gap-4 overflow-x-auto pb-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="flex flex-col gap-4 sm:grid sm:grid-flow-col sm:auto-cols-[minmax(240px,1fr)] sm:overflow-x-auto sm:pb-2 lg:grid-flow-row lg:auto-cols-auto lg:grid-cols-5 lg:overflow-visible">
           {APPLICATION_STATUSES.map((status) => (
             <div key={status} className="flex min-w-0 flex-col gap-3">
               <div className="flex items-center justify-between">
