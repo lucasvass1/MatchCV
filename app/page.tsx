@@ -488,8 +488,7 @@ function LandingFooter() {
     <footer className="px-6 pb-10 pt-6">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-border pt-7 text-sm text-muted-foreground sm:flex-row">
         <p>
-          MatchCV — projeto desenvolvido por Lucas Vasconcelos. Análise de
-          compatibilidade entre currículo e vaga com IA.
+          MatchCV — projeto desenvolvido por Lucas Vasconcelos.
         </p>
         <div className="flex gap-6">
           <a href="#como-funciona" className="hover:text-foreground">

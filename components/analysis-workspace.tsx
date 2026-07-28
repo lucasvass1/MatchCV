@@ -388,7 +388,7 @@ function FullResultCard({
                 {result.keywordsMissing.map((keyword, i) => (
                   <Badge
                     key={keyword}
-                    variant="outline"
+                    variant="warning"
                     className="mcv-pop"
                     style={{ animationDelay: `${i * 45}ms` }}
                   >
@@ -837,7 +837,7 @@ function MatchedKeywordsBlock({ keywords }: { keywords: string[] }) {
         {keywords.map((keyword, i) => (
           <Badge
             key={keyword}
-            variant="secondary"
+            variant="success"
             className="mcv-pop"
             style={{ animationDelay: `${i * 45}ms` }}
           >

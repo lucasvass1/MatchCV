@@ -196,12 +196,12 @@ function ComparisonResult({ comparison }: { comparison: AnalysisComparison }) {
           <KeywordDiffGroup
             title="Novas palavras-chave presentes agora"
             keywords={keywordDiff.newlyMatched}
-            variant="secondary"
+            variant="success"
           />
           <KeywordDiffGroup
             title="Lacunas resolvidas"
             keywords={keywordDiff.resolvedGaps}
-            variant="secondary"
+            variant="success"
           />
           <KeywordDiffGroup
             title="Novas lacunas"
@@ -240,7 +240,7 @@ function KeywordDiffGroup({
 }: {
   title: string;
   keywords: string[];
-  variant: "secondary" | "destructive" | "outline";
+  variant: "success" | "destructive" | "outline";
 }) {
   if (keywords.length === 0) return null;
   return (

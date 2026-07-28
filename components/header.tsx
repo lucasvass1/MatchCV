@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { LogOut, Menu, X } from "lucide-react";
 
@@ -35,7 +36,9 @@ export function Header() {
           MatchCV
         </Link>
 
-        {status === "loading" ? null : isAuthenticated ? (
+        {status === "loading" ? (
+          <ThemeToggle />
+        ) : isAuthenticated ? (
           <>
             <nav className="hidden items-center gap-1 lg:flex">
               {NAV_ITEMS.map((item) => (
@@ -49,24 +52,29 @@ export function Header() {
               <span className="max-w-[16ch] truncate text-sm text-muted-foreground">
                 {session!.user!.name ?? session!.user!.email}
               </span>
+              <ThemeToggle />
               <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/" })}>
                 <LogOut className="size-4" />
                 Sair
               </Button>
             </div>
 
-            <button
-              type="button"
-              className="flex size-9 items-center justify-center rounded-lg border border-border text-foreground lg:hidden"
-              aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={mobileOpen}
-              onClick={() => setMobileOpen((v) => !v)}
-            >
-              {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-            </button>
+            <div className="flex items-center gap-2 lg:hidden">
+              <ThemeToggle />
+              <button
+                type="button"
+                className="flex size-9 items-center justify-center rounded-lg border border-border text-foreground"
+                aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+                aria-expanded={mobileOpen}
+                onClick={() => setMobileOpen((v) => !v)}
+              >
+                {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+              </button>
+            </div>
           </>
         ) : (
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/login" />}>
               Entrar
             </Button>
@@ -88,7 +96,7 @@ export function Header() {
               className={cn(
                 "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 pathname === item.href
-                  ? "bg-muted text-foreground"
+                  ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
@@ -133,7 +141,7 @@ function NavLink({
       className={cn(
         "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
         active
-          ? "bg-muted text-foreground"
+          ? "bg-primary/10 text-primary"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
       )}
     >

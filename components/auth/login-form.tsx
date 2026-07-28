@@ -18,6 +18,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGitHubLoading, setIsGitHubLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
@@ -47,18 +48,35 @@ export function LoginForm() {
     await signIn("google", { callbackUrl });
   }
 
+  async function handleGitHubLogin() {
+    setIsGitHubLoading(true);
+    await signIn("github", { callbackUrl });
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={handleGoogleLogin}
-        disabled={isGoogleLoading}
-      >
-        {isGoogleLoading && <Loader2 className="size-4 animate-spin" />}
-        Entrar com Google
-      </Button>
+      <div className="flex flex-col gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={handleGoogleLogin}
+          disabled={isGoogleLoading || isGitHubLoading}
+        >
+          {isGoogleLoading && <Loader2 className="size-4 animate-spin" />}
+          Entrar com Google
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={handleGitHubLogin}
+          disabled={isGoogleLoading || isGitHubLoading}
+        >
+          {isGitHubLoading && <Loader2 className="size-4 animate-spin" />}
+          Entrar com GitHub
+        </Button>
+      </div>
 
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <div className="h-px flex-1 bg-border" />

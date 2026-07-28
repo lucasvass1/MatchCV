@@ -21,6 +21,8 @@ export function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGitHubLoading, setIsGitHubLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
@@ -59,7 +61,7 @@ export function RegisterForm() {
 
       if (!result || result.error) {
         throw new Error(
-          "Conta criada, mas não foi possível entrar automaticamente. Faça login."
+          "Conta criada, mas não foi possível entrar automaticamente. Faça login.",
         );
       }
 
@@ -72,64 +74,105 @@ export function RegisterForm() {
     }
   }
 
+  async function handleGoogleSignUp() {
+    setIsGoogleLoading(true);
+    await signIn("google", { callbackUrl });
+  }
+
+  async function handleGitHubSignUp() {
+    setIsGitHubLoading(true);
+    await signIn("github", { callbackUrl });
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Nome</Label>
-        <Input
-          id="name"
-          autoComplete="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">E-mail</Label>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">Senha</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="confirmPassword">Confirmar senha</Label>
-        <Input
-          id="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={handleGoogleSignUp}
+          disabled={isGoogleLoading || isGitHubLoading}
+        >
+          {isGoogleLoading && <Loader2 className="size-4 animate-spin" />}
+          Criar conta com Google
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={handleGitHubSignUp}
+          disabled={isGoogleLoading || isGitHubLoading}
+        >
+          {isGitHubLoading && <Loader2 className="size-4 animate-spin" />}
+          Criar conta com GitHub
+        </Button>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="size-4" />
-          <AlertTitle>{error}</AlertTitle>
-        </Alert>
-      )}
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="h-px flex-1 bg-border" />
+        ou
+        <div className="h-px flex-1 bg-border" />
+      </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading && <Loader2 className="size-4 animate-spin" />}
-        {isLoading ? "Criando conta..." : "Criar conta"}
-      </Button>
-    </form>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="name">Nome</Label>
+          <Input
+            id="name"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="email">E-mail</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="password">Senha</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={MIN_PASSWORD_LENGTH}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="confirmPassword">Confirmar senha</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={MIN_PASSWORD_LENGTH}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        </div>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertTitle>{error}</AlertTitle>
+          </Alert>
+        )}
+
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading && <Loader2 className="size-4 animate-spin" />}
+          {isLoading ? "Criando conta..." : "Criar conta"}
+        </Button>
+      </form>
+    </div>
   );
 }
