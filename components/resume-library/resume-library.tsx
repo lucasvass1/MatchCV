@@ -6,8 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Download, Loader2, RefreshCw, Search } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Download,
+  Loader2,
+  RefreshCw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { AdaptedResume } from "@/lib/gemini";
 
 export type ResumeLibraryItem = {
@@ -18,7 +27,8 @@ export type ResumeLibraryItem = {
   adaptedResume: AdaptedResume;
 };
 
-export function ResumeLibrary({ resumes }: { resumes: ResumeLibraryItem[] }) {
+export function ResumeLibrary({ resumes: initialResumes }: { resumes: ResumeLibraryItem[] }) {
+  const [resumes, setResumes] = useState(initialResumes);
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -35,6 +45,10 @@ export function ResumeLibrary({ resumes }: { resumes: ResumeLibraryItem[] }) {
       return haystack.includes(term);
     });
   }, [resumes, query]);
+
+  function handleDeleted(id: string) {
+    setResumes((prev) => prev.filter((resume) => resume.id !== id));
+  }
 
   if (resumes.length === 0) {
     return (
@@ -68,7 +82,7 @@ export function ResumeLibrary({ resumes }: { resumes: ResumeLibraryItem[] }) {
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((resume) => (
-            <ResumeLibraryCard key={resume.id} resume={resume} />
+            <ResumeLibraryCard key={resume.id} resume={resume} onDeleted={handleDeleted} />
           ))}
         </div>
       )}
@@ -76,9 +90,17 @@ export function ResumeLibrary({ resumes }: { resumes: ResumeLibraryItem[] }) {
   );
 }
 
-function ResumeLibraryCard({ resume }: { resume: ResumeLibraryItem }) {
+function ResumeLibraryCard({
+  resume,
+  onDeleted,
+}: {
+  resume: ResumeLibraryItem;
+  onDeleted: (id: string) => void;
+}) {
   const router = useRouter();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const jobPreview = resume.jobDescriptionText.trim().slice(0, 100);
@@ -110,6 +132,22 @@ function ResumeLibraryCard({ resume }: { resume: ResumeLibraryItem }) {
 
   function handleReuse() {
     router.push(`/?reuseAnalysisId=${resume.id}`);
+  }
+
+  async function handleDelete() {
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/analysis/${resume.id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error ?? "Não foi possível excluir a análise.");
+      }
+      onDeleted(resume.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+      setIsDeleting(false);
+    }
   }
 
   return (
@@ -154,6 +192,53 @@ function ResumeLibraryCard({ resume }: { resume: ResumeLibraryItem }) {
             <RefreshCw className="size-4" />
             Usar como base para nova análise
           </Button>
+        </div>
+
+        {confirmingDelete && (
+          <Alert variant="destructive">
+            <AlertTriangle className="size-4" />
+            <AlertTitle>Esta análise será apagada por completo</AlertTitle>
+            <AlertDescription>
+              Ela some da biblioteca, da comparação de versões e do gráfico em
+              &quot;Meu progresso&quot;. Se estiver vinculada a uma candidatura em
+              &quot;Minhas vagas&quot;, a candidatura continua existindo, só perde a
+              referência a este currículo. Essa ação não pode ser desfeita.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="flex items-center justify-end gap-1">
+          {confirmingDelete ? (
+            <>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={isDeleting}
+              >
+                <X className="size-3" />
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                size="xs"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Trash2 className="size-3" />
+                )}
+                Confirmar exclusão
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="xs" onClick={() => setConfirmingDelete(true)}>
+              <Trash2 className="size-3" />
+              Excluir
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

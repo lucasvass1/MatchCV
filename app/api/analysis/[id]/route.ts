@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { claimAnalysis } from "@/lib/analysis-store";
-import { saveAnalysisForUser } from "@/lib/analysis-repository";
+import { deleteOwnedAnalysis, saveAnalysisForUser } from "@/lib/analysis-repository";
 import { buildApplicationChecklist } from "@/lib/application-checklist";
 
 export const runtime = "nodejs";
@@ -41,4 +41,22 @@ export async function GET(
   );
 
   return NextResponse.json({ result: claimed.result, analysisId: analysis.id, checklist });
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const deleted = await deleteOwnedAnalysis(id, session.user.id);
+  if (!deleted) {
+    return NextResponse.json({ error: "Análise não encontrada." }, { status: 404 });
+  }
+
+  return NextResponse.json({ success: true });
 }

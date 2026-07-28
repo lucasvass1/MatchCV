@@ -58,6 +58,16 @@ export async function getOwnedAnalysis(id: string, userId: string) {
   return analysis;
 }
 
+// Candidaturas vinculadas (JobApplication.analysisId) mantêm o registro, só
+// perdem a referência ao currículo (onDelete: SetNull no schema).
+export async function deleteOwnedAnalysis(id: string, userId: string) {
+  const owned = await getOwnedAnalysis(id, userId);
+  if (!owned) return false;
+
+  await prisma.analysis.delete({ where: { id } });
+  return true;
+}
+
 export async function saveAdaptedResume(id: string, adaptedResume: AdaptedResume) {
   return prisma.analysis.update({
     where: { id },
