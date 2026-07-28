@@ -21,7 +21,8 @@ export default auth((req) => {
     (pathname.startsWith("/vagas") ||
       pathname.startsWith("/comparar") ||
       pathname.startsWith("/entrevista") ||
-      pathname.startsWith("/curriculos")) &&
+      pathname.startsWith("/curriculos") ||
+      pathname.startsWith("/progresso")) &&
     !req.auth
   ) {
     const loginUrl = new URL("/login", req.nextUrl);
@@ -44,6 +45,7 @@ export const config = {
     "/comparar/:path*",
     "/entrevista/:path*",
     "/curriculos/:path*",
+    "/progresso/:path*",
     "/api/analysis/:path*",
     "/api/job-applications/:path*",
     "/api/interview/:path*",

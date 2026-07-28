@@ -36,6 +36,22 @@ export async function listAnalysesForUser(userId: string) {
   });
 }
 
+// Histórico de desempenho: dados brutos para lib/analysis-stats.ts calcular
+// evolução de score e recorrência/aderência de palavras-chave.
+export async function listAnalysesForStats(userId: string) {
+  return prisma.analysis.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      score: true,
+      createdAt: true,
+      keywordsMatched: true,
+      keywordsMissing: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
 export async function getOwnedAnalysis(id: string, userId: string) {
   const analysis = await prisma.analysis.findUnique({ where: { id } });
   if (!analysis || analysis.userId !== userId) return null;
