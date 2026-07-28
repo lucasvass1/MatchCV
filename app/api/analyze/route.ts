@@ -4,6 +4,7 @@ import { extractTextFromFile } from "@/lib/extract-text";
 import { analyzeCompatibility, toPreview } from "@/lib/gemini";
 import { saveAnalysis } from "@/lib/analysis-store";
 import { saveAnalysisForUser } from "@/lib/analysis-repository";
+import { buildApplicationChecklist } from "@/lib/application-checklist";
 
 export const runtime = "nodejs";
 
@@ -90,7 +91,12 @@ export async function POST(request: Request) {
         jobDescription,
         result
       );
-      return NextResponse.json({ result, analysisId: analysis.id });
+      const checklist = buildApplicationChecklist(
+        result.applicationChecklist,
+        result.keywordsMissing,
+        false
+      );
+      return NextResponse.json({ result, analysisId: analysis.id, checklist });
     }
 
     const analysisId = saveAnalysis(result, resumeText, jobDescription);

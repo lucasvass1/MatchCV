@@ -29,12 +29,14 @@ import {
   MessageCircle,
   FileText,
   X,
+  Circle,
 } from "lucide-react";
 import type {
   AnalysisPreview,
   AnalysisResult,
   Recommendation,
 } from "@/lib/gemini";
+import type { ChecklistItem } from "@/lib/application-checklist";
 
 const ACCEPTED_EXTENSIONS = ".pdf,.docx";
 const PENDING_ANALYSIS_ID_KEY = "matchcv:pendingAnalysisId";
@@ -58,6 +60,7 @@ export function AnalysisWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [checklist, setChecklist] = useState<ChecklistItem[] | null>(null);
   const [preview, setPreview] = useState<AnalysisPreview | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(() =>
     typeof window === "undefined"
@@ -125,6 +128,7 @@ export function AnalysisWorkspace() {
         }
         setResult(data.result as AnalysisResult);
         setAnalysisId(data.analysisId as string);
+        setChecklist(data.checklist as ChecklistItem[]);
         setPreview(null);
       })
       .catch((err) => {
@@ -156,6 +160,7 @@ export function AnalysisWorkspace() {
     setIsLoading(true);
     setResult(null);
     setAnalysisId(null);
+    setChecklist(null);
     setPreview(null);
 
     try {
@@ -181,6 +186,7 @@ export function AnalysisWorkspace() {
       if (isAuthenticated) {
         setResult(data.result as AnalysisResult);
         setAnalysisId(data.analysisId as string);
+        setChecklist(data.checklist as ChecklistItem[]);
         sessionStorage.removeItem(PENDING_ANALYSIS_ID_KEY);
         setPendingId(null);
       } else {
@@ -290,7 +296,9 @@ export function AnalysisWorkspace() {
         </Card>
       )}
 
-      {result && analysisId && <FullResultCard result={result} analysisId={analysisId} />}
+      {result && analysisId && checklist && (
+        <FullResultCard result={result} analysisId={analysisId} initialChecklist={checklist} />
+      )}
       {!result && preview && <PreviewResultCard preview={preview} />}
     </div>
   );
@@ -299,10 +307,52 @@ export function AnalysisWorkspace() {
 function FullResultCard({
   result,
   analysisId,
+  initialChecklist,
 }: {
   result: AnalysisResult;
   analysisId: string;
+  initialChecklist: ChecklistItem[];
 }) {
+  const [checklist, setChecklist] = useState(initialChecklist);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  function markAdaptedResumeReady() {
+    setChecklist((items) =>
+      items.map((item) =>
+        item.id === "adapted-resume"
+          ? { ...item, status: "done", detail: "Currículo adaptado já gerado." }
+          : item
+      )
+    );
+  }
+
+  async function handleDownloadAdaptedResume() {
+    setIsDownloading(true);
+    setDownloadError(null);
+
+    try {
+      const response = await fetch(`/api/analysis/${analysisId}/adapted-resume`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error ?? "Não foi possível gerar o currículo adaptado.");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "curriculo-adaptado.docx";
+      link.click();
+      URL.revokeObjectURL(url);
+      markAdaptedResumeReady();
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -314,7 +364,11 @@ function FullResultCard({
           <ScoreBlock score={result.score} />
 
           <div className="grid gap-2 sm:grid-cols-2">
-            <DownloadAdaptedResumeButton analysisId={analysisId} />
+            <DownloadAdaptedResumeButton
+              isDownloading={isDownloading}
+              error={downloadError}
+              onClick={handleDownloadAdaptedResume}
+            />
             <StartInterviewButton analysisId={analysisId} />
           </div>
 
@@ -358,6 +412,12 @@ function FullResultCard({
           </div>
         </CardContent>
       </Card>
+
+      <ChecklistCard
+        checklist={checklist}
+        isDownloadingAdaptedResume={isDownloading}
+        onDownloadAdaptedResume={handleDownloadAdaptedResume}
+      />
 
       <Card>
         <CardHeader>
@@ -437,43 +497,18 @@ function FullResultCard({
   );
 }
 
-function DownloadAdaptedResumeButton({ analysisId }: { analysisId: string }) {
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleDownload() {
-    setIsDownloading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/analysis/${analysisId}/adapted-resume`);
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error ?? "Não foi possível gerar o currículo adaptado.");
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "curriculo-adaptado.docx";
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro inesperado.");
-    } finally {
-      setIsDownloading(false);
-    }
-  }
-
+function DownloadAdaptedResumeButton({
+  isDownloading,
+  error,
+  onClick,
+}: {
+  isDownloading: boolean;
+  error: string | null;
+  onClick: () => void;
+}) {
   return (
     <div className="flex flex-col gap-2">
-      <Button
-        variant="outline"
-        className="w-full"
-        disabled={isDownloading}
-        onClick={handleDownload}
-      >
+      <Button variant="outline" className="w-full" disabled={isDownloading} onClick={onClick}>
         {isDownloading ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
@@ -604,6 +639,91 @@ function RecommendationBlock({
       </div>
       <p className="pt-1 text-sm opacity-90">{recommendation.reasoning}</p>
     </div>
+  );
+}
+
+const CHECKLIST_STATUS_CONFIG = {
+  done: {
+    icon: CheckCircle2,
+    className: "text-emerald-600 dark:text-emerald-400",
+  },
+  warning: {
+    icon: AlertTriangle,
+    className: "text-amber-600 dark:text-amber-400",
+  },
+  missing: {
+    icon: Circle,
+    className: "text-muted-foreground",
+  },
+} satisfies Record<
+  ChecklistItem["status"],
+  { icon: typeof CheckCircle2; className: string }
+>;
+
+function ChecklistCard({
+  checklist,
+  isDownloadingAdaptedResume,
+  onDownloadAdaptedResume,
+}: {
+  checklist: ChecklistItem[];
+  isDownloadingAdaptedResume: boolean;
+  onDownloadAdaptedResume: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Checklist antes de aplicar</CardTitle>
+        <CardDescription>
+          Itens que costumam fazer diferença antes de enviar sua candidatura
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-1">
+        {checklist.map((item) => {
+          // Só "Currículo adaptado" tem uma ação disponível dentro do app
+          // (baixar); os demais itens dependem de editar o arquivo do
+          // currículo fora daqui, então ficam só como leitura.
+          const isAdaptedResumeItem = item.id === "adapted-resume";
+          const isClickable = isAdaptedResumeItem && item.status !== "done";
+          const isSpinning = isAdaptedResumeItem && isDownloadingAdaptedResume;
+          const config = CHECKLIST_STATUS_CONFIG[item.status];
+          const Icon = isSpinning ? Loader2 : config.icon;
+
+          const row = (
+            <div className="flex items-start gap-3">
+              <Icon
+                className={`mt-0.5 size-4 shrink-0 ${config.className} ${
+                  isSpinning ? "animate-spin" : ""
+                }`}
+              />
+              <div>
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="text-sm text-muted-foreground">{item.detail}</p>
+              </div>
+            </div>
+          );
+
+          if (isClickable) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={onDownloadAdaptedResume}
+                disabled={isDownloadingAdaptedResume}
+                className="-mx-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed"
+              >
+                {row}
+              </button>
+            );
+          }
+
+          return (
+            <div key={item.id} className="px-2 py-2">
+              {row}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
 

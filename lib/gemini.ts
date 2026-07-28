@@ -14,6 +14,19 @@ export type Recommendation = {
   reasoning: string;
 };
 
+export type ChecklistSignalQuality = "strong" | "needs_improvement" | "missing";
+
+export type ChecklistSignal = {
+  quality: ChecklistSignalQuality;
+  message: string;
+};
+
+export type ApplicationChecklistSignals = {
+  github: ChecklistSignal;
+  linkedin: ChecklistSignal;
+  portfolio: ChecklistSignal;
+};
+
 export type AnalysisResult = {
   score: number;
   summary: string;
@@ -26,6 +39,7 @@ export type AnalysisResult = {
   interviewQuestions: InterviewQuestion[];
   studySuggestions: string[];
   recommendation: Recommendation;
+  applicationChecklist: ApplicationChecklistSignals;
 };
 
 // Subconjunto seguro para exibir a usuários não autenticados: nenhum campo
@@ -42,6 +56,24 @@ export function toPreview(result: AnalysisResult): AnalysisPreview {
     keywordsMatchedPreview: result.keywordsMatched.slice(0, 3),
   };
 }
+
+const checklistSignalSchema = {
+  type: Type.OBJECT,
+  properties: {
+    quality: {
+      type: Type.STRING,
+      enum: ["strong", "needs_improvement", "missing"],
+      description:
+        "'missing' se não houver nenhum link/menção no currículo; 'needs_improvement' se existir mas puder ser mais bem aproveitado; 'strong' se estiver presente e bem apresentado.",
+    },
+    message: {
+      type: Type.STRING,
+      description:
+        "Mensagem curta (1 frase): parabenize objetivamente quando 'strong', sugira uma melhoria concreta quando 'needs_improvement', ou oriente a adicionar quando 'missing'.",
+    },
+  },
+  required: ["quality", "message"],
+};
 
 const responseSchema = {
   type: Type.OBJECT,
@@ -126,6 +158,17 @@ const responseSchema = {
       },
       required: ["verdict", "reasoning"],
     },
+    applicationChecklist: {
+      type: Type.OBJECT,
+      description:
+        "Avaliação da presença e qualidade de sinais profissionais no currículo (GitHub, LinkedIn e portfólio pessoal), com base apenas no que está escrito no texto do currículo.",
+      properties: {
+        github: checklistSignalSchema,
+        linkedin: checklistSignalSchema,
+        portfolio: checklistSignalSchema,
+      },
+      required: ["github", "linkedin", "portfolio"],
+    },
   },
   required: [
     "score",
@@ -139,6 +182,7 @@ const responseSchema = {
     "interviewQuestions",
     "studySuggestions",
     "recommendation",
+    "applicationChecklist",
   ],
 };
 
@@ -200,6 +244,7 @@ Regras:
 - Na recomendação final, seja honesto: se as lacunas forem grandes, diga isso claramente em vez de suavizar. O objetivo é ajudar o candidato a tomar uma boa decisão, não agradá-lo.
 - As dicas de melhoria do currículo devem ser sobre como apresentar melhor a experiência real do candidato (reformulação, ênfase, métricas), nunca sobre adicionar experiência inexistente.
 - As perguntas de entrevista devem ser relevantes tanto para a vaga quanto para as lacunas identificadas no currículo.
+- Avalie também os sinais profissionais do candidato (GitHub, LinkedIn, portfólio pessoal) presentes no texto do currículo: nunca afirme que um link existe se ele não estiver literalmente no texto. Se existir, avalie se está bem aproveitado (ex: descrição, projetos em destaque) antes de classificar como "strong".
 
 Currículo:
 """

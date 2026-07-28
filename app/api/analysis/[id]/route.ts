@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { claimAnalysis } from "@/lib/analysis-store";
 import { saveAnalysisForUser } from "@/lib/analysis-repository";
+import { buildApplicationChecklist } from "@/lib/application-checklist";
 
 export const runtime = "nodejs";
 
@@ -33,5 +34,11 @@ export async function GET(
     claimed.result
   );
 
-  return NextResponse.json({ result: claimed.result, analysisId: analysis.id });
+  const checklist = buildApplicationChecklist(
+    claimed.result.applicationChecklist,
+    claimed.result.keywordsMissing,
+    false
+  );
+
+  return NextResponse.json({ result: claimed.result, analysisId: analysis.id, checklist });
 }
