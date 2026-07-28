@@ -64,6 +64,20 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Análise feita por usuário anônimo, guardada temporariamente até ele fazer
+// login e "reivindicar" o resultado completo (ver lib/analysis-store.ts).
+// Persistida em banco (não em memória) para funcionar em ambientes com
+// múltiplas instâncias/serverless. Uso único: apagada ao ser reivindicada.
+model PendingAnalysis {
+  id                 String   @id @default(cuid())
+  resumeText         String   @db.Text
+  jobDescriptionText String   @db.Text
+  result             Json
+  createdAt          DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model Analysis {
   id     String @id @default(cuid())
   userId String

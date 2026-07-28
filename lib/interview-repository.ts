@@ -26,14 +26,6 @@ export async function getOwnedInterviewSession(id: string, userId: string) {
   return session;
 }
 
-export async function listInterviewSessionsForUser(userId: string) {
-  return prisma.interviewSession.findMany({
-    where: { userId },
-    select: { id: true, analysisId: true, feedbackSummary: true, createdAt: true },
-    orderBy: { createdAt: "desc" },
-  });
-}
-
 export async function appendInterviewMessages(id: string, messages: InterviewMessage[]) {
   return prisma.interviewSession.update({
     where: { id },

@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ result, analysisId: analysis.id, checklist });
     }
 
-    const analysisId = saveAnalysis(result, resumeText, jobDescription);
+    const analysisId = await saveAnalysis(result, resumeText, jobDescription);
     return NextResponse.json({ analysisId, preview: toPreview(result) });
   } catch (error) {
     console.error("Erro ao analisar currículo:", error);

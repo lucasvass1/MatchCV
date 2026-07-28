@@ -33,7 +33,7 @@ export default auth((req) => {
   const isAuthRoute = AUTH_ROUTES.includes(pathname);
 
   if (isAuthRoute && req.auth) {
-    return NextResponse.redirect(new URL("/", req.nextUrl));
+    return NextResponse.redirect(new URL("/analisar", req.nextUrl));
   }
 });
 

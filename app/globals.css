@@ -128,3 +128,57 @@
     @apply font-sans;
   }
 }
+
+/* ----------------------------------------------------------------------
+   Fase 12 — camada de animação (padrão único de timing/easing)
+   Easing assinatura do MatchCV: ease-out refinado (desacelera suave).
+   Tudo é ativado apenas quando o usuário NÃO pediu redução de movimento,
+   então quem desativa animações vê os elementos já no estado final.
+------------------------------------------------------------------------- */
+:root {
+  --mcv-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --mcv-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --mcv-dur: 300ms;
+  --mcv-dur-fast: 160ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes mcv-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes mcv-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes mcv-pop {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .mcv-fade {
+    animation: mcv-fade var(--mcv-dur) var(--mcv-ease) both;
+  }
+  .mcv-fade-up {
+    animation: mcv-fade-up var(--mcv-dur) var(--mcv-ease) both;
+  }
+  .mcv-pop {
+    animation: mcv-pop var(--mcv-dur) var(--mcv-ease) both;
+  }
+}

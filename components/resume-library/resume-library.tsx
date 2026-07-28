@@ -131,7 +131,7 @@ function ResumeLibraryCard({
   }
 
   function handleReuse() {
-    router.push(`/?reuseAnalysisId=${resume.id}`);
+    router.push(`/analisar?reuseAnalysisId=${resume.id}`);
   }
 
   async function handleDelete() {

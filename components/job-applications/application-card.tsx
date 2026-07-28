@@ -169,10 +169,20 @@ export function ApplicationCard({
             </>
           ) : (
             <>
-              <Button variant="ghost" size="icon-xs" onClick={() => setIsEditing(true)}>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Editar candidatura"
+                onClick={() => setIsEditing(true)}
+              >
                 <Pencil className="size-3" />
               </Button>
-              <Button variant="ghost" size="icon-xs" onClick={() => setConfirmingDelete(true)}>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Excluir candidatura"
+                onClick={() => setConfirmingDelete(true)}
+              >
                 <Trash2 className="size-3" />
               </Button>
             </>

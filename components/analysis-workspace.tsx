@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { ScoreBar, scoreTextClass } from "@/components/score-bar";
+import { AnimatedNumber } from "@/components/animated-number";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import {
   Lock,
@@ -69,7 +70,6 @@ export function AnalysisWorkspace() {
   );
   const [reusedResume, setReusedResume] = useState<ReusedResume | null>(null);
   const [isLoadingReuse, setIsLoadingReuse] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const claimedIdRef = useRef<string | null>(null);
   const reusedIdRef = useRef<string | null>(null);
 
@@ -108,7 +108,7 @@ export function AnalysisWorkspace() {
   function clearReusedResume() {
     setReusedResume(null);
     reusedIdRef.current = null;
-    router.replace("/");
+    router.replace("/analisar");
   }
 
   // Depois do login, troca o id da análise anônima (salvo no navegador) pelo
@@ -198,7 +198,7 @@ export function AnalysisWorkspace() {
       if (reusedResume) {
         setReusedResume(null);
         reusedIdRef.current = null;
-        router.replace("/");
+        router.replace("/analisar");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
@@ -248,7 +248,6 @@ export function AnalysisWorkspace() {
                   Currículo (PDF ou DOCX)
                 </label>
                 <input
-                  ref={fileInputRef}
                   id="resume"
                   name="resume"
                   type="file"
@@ -273,7 +272,7 @@ export function AnalysisWorkspace() {
             </div>
 
             {error && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="mcv-fade-up">
                 <AlertCircle className="size-4" />
                 <AlertTitle>{error}</AlertTitle>
               </Alert>
@@ -288,7 +287,7 @@ export function AnalysisWorkspace() {
       </Card>
 
       {isClaiming && (
-        <Card>
+        <Card className="mcv-fade">
           <CardContent className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
             Recuperando sua análise...
@@ -354,7 +353,7 @@ function FullResultCard({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mcv-fade-up flex flex-col gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Resultado da análise</CardTitle>
@@ -386,8 +385,13 @@ function FullResultCard({
             <div>
               <p className="text-sm font-semibold">Palavras-chave ausentes</p>
               <div className="flex flex-wrap gap-2 pt-1">
-                {result.keywordsMissing.map((keyword) => (
-                  <Badge key={keyword} variant="outline">
+                {result.keywordsMissing.map((keyword, i) => (
+                  <Badge
+                    key={keyword}
+                    variant="outline"
+                    className="mcv-pop"
+                    style={{ animationDelay: `${i * 45}ms` }}
+                  >
                     {keyword}
                   </Badge>
                 ))}
@@ -485,8 +489,13 @@ function FullResultCard({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {result.studySuggestions.map((topic) => (
-              <Badge key={topic} variant="secondary">
+            {result.studySuggestions.map((topic, i) => (
+              <Badge
+                key={topic}
+                variant="secondary"
+                className="mcv-pop"
+                style={{ animationDelay: `${i * 45}ms` }}
+              >
                 {topic}
               </Badge>
             ))}
@@ -729,7 +738,7 @@ function ChecklistCard({
 
 function PreviewResultCard({ preview }: { preview: AnalysisPreview }) {
   return (
-    <Card>
+    <Card className="mcv-fade-up">
       <CardHeader>
         <CardTitle>Resultado da análise</CardTitle>
         <CardDescription>Prévia gratuita da sua compatibilidade</CardDescription>
@@ -807,9 +816,13 @@ function ScoreBlock({ score }: { score: number }) {
         <span className="text-sm font-medium text-muted-foreground">
           Compatibilidade
         </span>
-        <span className="text-3xl font-bold">{score}%</span>
+        <AnimatedNumber
+          value={score}
+          suffix="%"
+          className={`text-3xl font-bold ${scoreTextClass(score)}`}
+        />
       </div>
-      <Progress value={score} />
+      <ScoreBar score={score} />
     </div>
   );
 }
@@ -821,8 +834,13 @@ function MatchedKeywordsBlock({ keywords }: { keywords: string[] }) {
         Algumas palavras-chave encontradas
       </span>
       <div className="flex flex-wrap gap-2">
-        {keywords.map((keyword) => (
-          <Badge key={keyword} variant="secondary">
+        {keywords.map((keyword, i) => (
+          <Badge
+            key={keyword}
+            variant="secondary"
+            className="mcv-pop"
+            style={{ animationDelay: `${i * 45}ms` }}
+          >
             {keyword}
           </Badge>
         ))}

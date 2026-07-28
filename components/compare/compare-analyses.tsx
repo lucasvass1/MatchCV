@@ -12,7 +12,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { SelectNative } from "@/components/ui/select-native";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { ScoreBar, scoreTextClass } from "@/components/score-bar";
+import { AnimatedNumber } from "@/components/animated-number";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, ArrowRight, Loader2 } from "lucide-react";
 import type { AnalysisOption } from "@/components/job-applications/types";
@@ -146,7 +147,7 @@ function ComparisonResult({ comparison }: { comparison: AnalysisComparison }) {
         : "text-muted-foreground";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mcv-fade-up flex flex-col gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Evolução de compatibilidade</CardTitle>
@@ -222,8 +223,12 @@ function ScoreColumn({ label, score }: { label: string; score: number }) {
   return (
     <div className="flex w-28 flex-col gap-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-bold">{score}%</p>
-      <Progress value={score} />
+      <AnimatedNumber
+        value={score}
+        suffix="%"
+        className={`text-2xl font-bold ${scoreTextClass(score)}`}
+      />
+      <ScoreBar score={score} />
     </div>
   );
 }
@@ -242,8 +247,13 @@ function KeywordDiffGroup({
     <div>
       <p className="text-sm font-semibold">{title}</p>
       <div className="flex flex-wrap gap-2 pt-1">
-        {keywords.map((keyword) => (
-          <Badge key={keyword} variant={variant}>
+        {keywords.map((keyword, i) => (
+          <Badge
+            key={keyword}
+            variant={variant}
+            className="mcv-pop"
+            style={{ animationDelay: `${i * 45}ms` }}
+          >
             {keyword}
           </Badge>
         ))}

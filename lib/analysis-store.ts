@@ -1,9 +1,13 @@
+import { prisma } from "@/lib/prisma";
 import type { AnalysisResult } from "@/lib/gemini";
 
-// Armazena resultados de análises anônimas por um curto período, permitindo
-// que o usuário reivindique o resultado completo assim que fizer login, sem
+// Guarda resultados de análises anônimas por um curto período, permitindo que
+// o usuário reivindique o resultado completo assim que fizer login, sem
 // precisar refazer a chamada à IA nem expor os campos protegidos antes disso.
-// Em memória por ora — uso único e curto (30min), então não precisa de tabela.
+//
+// Persistido em banco (tabela PendingAnalysis) — e não em memória — para
+// funcionar em ambientes com múltiplas instâncias/serverless, onde o POST e o
+// GET do claim podem cair em processos diferentes. Uso único e curto (30min).
 const TTL_MS = 30 * 60 * 1000; // 30 minutos
 
 export type ClaimedAnalysis = {
@@ -12,37 +16,34 @@ export type ClaimedAnalysis = {
   jobDescriptionText: string;
 };
 
-type StoreEntry = ClaimedAnalysis & {
-  createdAt: number;
-};
-
-const store = new Map<string, StoreEntry>();
-
-function purgeExpired() {
-  const now = Date.now();
-  for (const [id, entry] of store) {
-    if (now - entry.createdAt > TTL_MS) {
-      store.delete(id);
-    }
-  }
-}
-
-export function saveAnalysis(
+export async function saveAnalysis(
   result: AnalysisResult,
   resumeText: string,
   jobDescriptionText: string
-): string {
-  purgeExpired();
-  const id = crypto.randomUUID();
-  store.set(id, { result, resumeText, jobDescriptionText, createdAt: Date.now() });
-  return id;
+): Promise<string> {
+  // Limpeza best-effort das análises pendentes já expiradas.
+  await prisma.pendingAnalysis
+    .deleteMany({ where: { createdAt: { lt: new Date(Date.now() - TTL_MS) } } })
+    .catch(() => {});
+
+  const pending = await prisma.pendingAnalysis.create({
+    data: { result, resumeText, jobDescriptionText },
+  });
+  return pending.id;
 }
 
-export function claimAnalysis(id: string): ClaimedAnalysis | null {
-  purgeExpired();
-  const entry = store.get(id);
-  if (!entry) return null;
-  store.delete(id); // uso único
-  const { result, resumeText, jobDescriptionText } = entry;
-  return { result, resumeText, jobDescriptionText };
+export async function claimAnalysis(id: string): Promise<ClaimedAnalysis | null> {
+  const pending = await prisma.pendingAnalysis.findUnique({ where: { id } });
+  if (!pending) return null;
+
+  // Uso único: remove ao reivindicar (mesmo que já esteja expirada).
+  await prisma.pendingAnalysis.delete({ where: { id } }).catch(() => {});
+
+  if (Date.now() - pending.createdAt.getTime() > TTL_MS) return null;
+
+  return {
+    result: pending.result as AnalysisResult,
+    resumeText: pending.resumeText,
+    jobDescriptionText: pending.jobDescriptionText,
+  };
 }

@@ -19,7 +19,7 @@ export async function GET(
   }
 
   const { id } = await params;
-  const claimed = claimAnalysis(id);
+  const claimed = await claimAnalysis(id);
   if (!claimed) {
     return NextResponse.json(
       { error: "Análise não encontrada ou expirada." },

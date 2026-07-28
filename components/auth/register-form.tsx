@@ -14,7 +14,7 @@ const MIN_PASSWORD_LENGTH = 8;
 export function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = searchParams.get("callbackUrl") || "/analisar";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

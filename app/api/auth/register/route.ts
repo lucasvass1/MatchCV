@@ -54,13 +54,34 @@ export async function POST(request: Request) {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  await prisma.user.create({
-    data: {
-      email: normalizedEmail,
-      name: typeof name === "string" && name.trim() ? name.trim() : null,
-      password: hashedPassword,
-    },
-  });
+  try {
+    await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        name: typeof name === "string" && name.trim() ? name.trim() : null,
+        password: hashedPassword,
+      },
+    });
+  } catch (error) {
+    // Corrida de e-mail duplicado (violação da constraint unique) ou falha
+    // do banco — responde de forma amigável em vez de estourar um 500 cru.
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "Já existe uma conta com este e-mail." },
+        { status: 409 }
+      );
+    }
+    console.error("Erro ao criar conta:", error);
+    return NextResponse.json(
+      { error: "Não foi possível criar sua conta agora. Tente novamente." },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ success: true });
 }
