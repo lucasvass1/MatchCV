@@ -3,11 +3,16 @@ import type { AnalysisResult } from "@/lib/gemini";
 // Armazena resultados de análises anônimas por um curto período, permitindo
 // que o usuário reivindique o resultado completo assim que fizer login, sem
 // precisar refazer a chamada à IA nem expor os campos protegidos antes disso.
-// Em memória por ora, pois não há modelo de Analysis persistido até a Fase 3.
+// Em memória por ora — uso único e curto (30min), então não precisa de tabela.
 const TTL_MS = 30 * 60 * 1000; // 30 minutos
 
-type StoreEntry = {
+export type ClaimedAnalysis = {
   result: AnalysisResult;
+  resumeText: string;
+  jobDescriptionText: string;
+};
+
+type StoreEntry = ClaimedAnalysis & {
   createdAt: number;
 };
 
@@ -22,17 +27,22 @@ function purgeExpired() {
   }
 }
 
-export function saveAnalysis(result: AnalysisResult): string {
+export function saveAnalysis(
+  result: AnalysisResult,
+  resumeText: string,
+  jobDescriptionText: string
+): string {
   purgeExpired();
   const id = crypto.randomUUID();
-  store.set(id, { result, createdAt: Date.now() });
+  store.set(id, { result, resumeText, jobDescriptionText, createdAt: Date.now() });
   return id;
 }
 
-export function claimAnalysis(id: string): AnalysisResult | null {
+export function claimAnalysis(id: string): ClaimedAnalysis | null {
   purgeExpired();
   const entry = store.get(id);
   if (!entry) return null;
   store.delete(id); // uso único
-  return entry.result;
+  const { result, resumeText, jobDescriptionText } = entry;
+  return { result, resumeText, jobDescriptionText };
 }

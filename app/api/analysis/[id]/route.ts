@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { claimAnalysis } from "@/lib/analysis-store";
+import { saveAnalysisForUser } from "@/lib/analysis-repository";
 
 export const runtime = "nodejs";
 
@@ -12,18 +13,25 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
   const { id } = await params;
-  const result = claimAnalysis(id);
-  if (!result) {
+  const claimed = claimAnalysis(id);
+  if (!claimed) {
     return NextResponse.json(
       { error: "Análise não encontrada ou expirada." },
       { status: 404 }
     );
   }
 
-  return NextResponse.json({ result });
+  const analysis = await saveAnalysisForUser(
+    session.user.id,
+    claimed.resumeText,
+    claimed.jobDescriptionText,
+    claimed.result
+  );
+
+  return NextResponse.json({ result: claimed.result, analysisId: analysis.id });
 }

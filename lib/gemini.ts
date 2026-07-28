@@ -2,6 +2,18 @@ import { ApiError, GoogleGenAI, Type } from "@google/genai";
 
 const MODEL = "gemini-flash-latest";
 
+export type InterviewQuestion = {
+  question: string;
+  type: "technical" | "behavioral";
+};
+
+export type RecommendationVerdict = "recommended" | "possible" | "not_recommended";
+
+export type Recommendation = {
+  verdict: RecommendationVerdict;
+  reasoning: string;
+};
+
 export type AnalysisResult = {
   score: number;
   summary: string;
@@ -9,6 +21,11 @@ export type AnalysisResult = {
   keywordsMissing: string[];
   strengths: string[];
   weaknesses: string[];
+  improvementTips: string[];
+  interviewTips: string[];
+  interviewQuestions: InterviewQuestion[];
+  studySuggestions: string[];
+  recommendation: Recommendation;
 };
 
 // Subconjunto seguro para exibir a usuários não autenticados: nenhum campo
@@ -58,6 +75,57 @@ const responseSchema = {
       items: { type: Type.STRING },
       description: "Pontos fracos ou lacunas do currículo em relação à vaga.",
     },
+    improvementTips: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "Dicas concretas e acionáveis de como melhorar o currículo para esta vaga, sem inventar experiência que o candidato não tem.",
+    },
+    interviewTips: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "Dicas de comportamento e postura para a entrevista desta vaga específica.",
+    },
+    interviewQuestions: {
+      type: Type.ARRAY,
+      description:
+        "Possíveis perguntas de entrevista para esta vaga, técnicas e comportamentais.",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          question: { type: Type.STRING },
+          type: {
+            type: Type.STRING,
+            enum: ["technical", "behavioral"],
+          },
+        },
+        required: ["question", "type"],
+      },
+    },
+    studySuggestions: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "Tópicos ou tecnologias que o candidato deveria estudar para se preparar melhor para esta vaga.",
+    },
+    recommendation: {
+      type: Type.OBJECT,
+      description:
+        "Avaliação honesta se vale a pena o candidato se candidatar a esta vaga, considerando pontos fortes e lacunas reais.",
+      properties: {
+        verdict: {
+          type: Type.STRING,
+          enum: ["recommended", "possible", "not_recommended"],
+        },
+        reasoning: {
+          type: Type.STRING,
+          description:
+            "Explicação honesta e direta do veredito, mencionando lacunas relevantes quando existirem.",
+        },
+      },
+      required: ["verdict", "reasoning"],
+    },
   },
   required: [
     "score",
@@ -66,6 +134,11 @@ const responseSchema = {
     "keywordsMissing",
     "strengths",
     "weaknesses",
+    "improvementTips",
+    "interviewTips",
+    "interviewQuestions",
+    "studySuggestions",
+    "recommendation",
   ],
 };
 
@@ -80,12 +153,16 @@ export async function analyzeCompatibility(
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const prompt = `Você é um especialista em recrutamento e seleção. Compare o currículo e a vaga abaixo e avalie a compatibilidade entre eles.
+  const prompt = `Você é um especialista em recrutamento e seleção. Compare o currículo e a vaga abaixo e produza uma análise completa de compatibilidade.
 
 Regras:
-- Não invente informações que não estão no currículo.
+- Nunca invente informações, tecnologias ou experiências que não estão explicitamente no currículo, mesmo que isso reduza o score.
+- O score e a recomendação devem refletir a realidade do currículo, não o que seria ideal para a vaga.
 - Considere sinônimos e tecnologias relacionadas ao comparar palavras-chave.
-- Seja específico e objetivo na explicação do score.
+- Seja específico e objetivo em todas as explicações.
+- Na recomendação final, seja honesto: se as lacunas forem grandes, diga isso claramente em vez de suavizar. O objetivo é ajudar o candidato a tomar uma boa decisão, não agradá-lo.
+- As dicas de melhoria do currículo devem ser sobre como apresentar melhor a experiência real do candidato (reformulação, ênfase, métricas), nunca sobre adicionar experiência inexistente.
+- As perguntas de entrevista devem ser relevantes tanto para a vaga quanto para as lacunas identificadas no currículo.
 
 Currículo:
 """

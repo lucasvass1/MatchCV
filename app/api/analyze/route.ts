@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { extractTextFromFile } from "@/lib/extract-text";
 import { analyzeCompatibility, toPreview } from "@/lib/gemini";
 import { saveAnalysis } from "@/lib/analysis-store";
+import { saveAnalysisForUser } from "@/lib/analysis-repository";
 
 export const runtime = "nodejs";
 
@@ -74,11 +75,17 @@ export async function POST(request: Request) {
     const result = await analyzeCompatibility(resumeText, jobDescription);
 
     const session = await auth();
-    if (session?.user) {
-      return NextResponse.json({ result });
+    if (session?.user?.id) {
+      const analysis = await saveAnalysisForUser(
+        session.user.id,
+        resumeText,
+        jobDescription,
+        result
+      );
+      return NextResponse.json({ result, analysisId: analysis.id });
     }
 
-    const analysisId = saveAnalysis(result);
+    const analysisId = saveAnalysis(result, resumeText, jobDescription);
     return NextResponse.json({ analysisId, preview: toPreview(result) });
   } catch (error) {
     console.error("Erro ao analisar currículo:", error);

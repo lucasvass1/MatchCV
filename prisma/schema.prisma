@@ -21,8 +21,9 @@ model User {
   password      String?
   createdAt     DateTime  @default(now())
 
-  accounts Account[]
-  sessions Session[]
+  accounts  Account[]
+  sessions  Session[]
+  analyses  Analysis[]
 }
 
 model Account {
@@ -59,4 +60,33 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Analysis {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  resumeText         String @db.Text
+  jobDescriptionText String @db.Text
+
+  score       Int
+  summary     String   @db.Text
+  keywordsMatched String[]
+  keywordsMissing String[]
+  strengths       String[]
+  weaknesses      String[]
+  improvementTips String[]
+  interviewTips   String[]
+  studySuggestions String[]
+
+  // Array de { question: string, type: "technical" | "behavioral" }
+  interviewQuestions Json
+
+  recommendationVerdict   String
+  recommendationReasoning String @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

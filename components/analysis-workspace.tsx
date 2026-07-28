@@ -15,8 +15,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Lock, AlertCircle, Loader2 } from "lucide-react";
-import type { AnalysisPreview, AnalysisResult } from "@/lib/gemini";
+import {
+  Lock,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  BookOpen,
+  MessagesSquare,
+} from "lucide-react";
+import type {
+  AnalysisPreview,
+  AnalysisResult,
+  Recommendation,
+} from "@/lib/gemini";
 
 const ACCEPTED_EXTENSIONS = ".pdf,.docx";
 const PENDING_ANALYSIS_ID_KEY = "matchcv:pendingAnalysisId";
@@ -37,14 +50,18 @@ export function AnalysisWorkspace() {
       : sessionStorage.getItem(PENDING_ANALYSIS_ID_KEY)
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const claimedIdRef = useRef<string | null>(null);
 
   const isClaiming = isAuthenticated && pendingId !== null && !result;
 
   // Depois do login, troca o id da análise anônima (salvo no navegador) pelo
   // resultado completo no servidor — nenhum dado protegido chega a ficar no
-  // navegador antes da autenticação.
+  // navegador antes da autenticação. A ref evita reivindicar o mesmo id duas
+  // vezes (ex: StrictMode em dev), já que o claim no servidor é de uso único.
   useEffect(() => {
     if (!isClaiming || !pendingId) return;
+    if (claimedIdRef.current === pendingId) return;
+    claimedIdRef.current = pendingId;
 
     fetch(`/api/analysis/${pendingId}`)
       .then(async (response) => {
@@ -189,52 +206,194 @@ export function AnalysisWorkspace() {
 
 function FullResultCard({ result }: { result: AnalysisResult }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Resultado da análise</CardTitle>
-        <CardDescription>Análise completa da sua compatibilidade</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-6">
-        <ScoreBlock score={result.score} />
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Resultado da análise</CardTitle>
+          <CardDescription>Análise completa da sua compatibilidade</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <ScoreBlock score={result.score} />
 
-        {result.keywordsMatched.length > 0 && (
-          <MatchedKeywordsBlock keywords={result.keywordsMatched.slice(0, 3)} />
-        )}
+          {result.keywordsMatched.length > 0 && (
+            <MatchedKeywordsBlock keywords={result.keywordsMatched.slice(0, 3)} />
+          )}
 
-        <div className="space-y-4 rounded-lg border p-4">
-          <div>
-            <p className="text-sm font-semibold">Explicação do score</p>
-            <p className="text-sm text-muted-foreground">{result.summary}</p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold">Palavras-chave ausentes</p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {result.keywordsMissing.map((keyword) => (
-                <Badge key={keyword} variant="outline">
-                  {keyword}
-                </Badge>
-              ))}
+          <RecommendationBlock recommendation={result.recommendation} />
+
+          <div className="space-y-4 rounded-lg border p-4">
+            <div>
+              <p className="text-sm font-semibold">Explicação do score</p>
+              <p className="text-sm text-muted-foreground">{result.summary}</p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Palavras-chave ausentes</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {result.keywordsMissing.map((keyword) => (
+                  <Badge key={keyword} variant="outline">
+                    {keyword}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Pontos fortes</p>
+              <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                {result.strengths.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Pontos fracos</p>
+              <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                {result.weaknesses.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
             </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold">Pontos fortes</p>
-            <ul className="list-disc pl-5 text-sm text-muted-foreground">
-              {result.strengths.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Como melhorar seu currículo</CardTitle>
+          <CardDescription>
+            Ajustes na apresentação da sua experiência real para esta vaga
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+            {result.improvementTips.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessagesSquare className="size-4" />
+            Preparação para a entrevista
+          </CardTitle>
+          <CardDescription>
+            Dicas de postura e perguntas prováveis para esta vaga
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {result.interviewTips.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold">Dicas de comportamento</p>
+              <ul className="list-disc space-y-1 pl-5 pt-1 text-sm text-muted-foreground">
+                {result.interviewTips.map((tip) => (
+                  <li key={tip}>{tip}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.interviewQuestions.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <InterviewQuestionsGroup
+                title="Perguntas técnicas"
+                questions={result.interviewQuestions
+                  .filter((q) => q.type === "technical")
+                  .map((q) => q.question)}
+              />
+              <InterviewQuestionsGroup
+                title="Perguntas comportamentais"
+                questions={result.interviewQuestions
+                  .filter((q) => q.type === "behavioral")
+                  .map((q) => q.question)}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="size-4" />
+            O que estudar para esta vaga
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {result.studySuggestions.map((topic) => (
+              <Badge key={topic} variant="secondary">
+                {topic}
+              </Badge>
+            ))}
           </div>
-          <div>
-            <p className="text-sm font-semibold">Pontos fracos</p>
-            <ul className="list-disc pl-5 text-sm text-muted-foreground">
-              {result.weaknesses.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function InterviewQuestionsGroup({
+  title,
+  questions,
+}: {
+  title: string;
+  questions: string[];
+}) {
+  if (questions.length === 0) return null;
+  return (
+    <div>
+      <p className="text-sm font-semibold">{title}</p>
+      <ul className="list-disc space-y-1 pl-5 pt-1 text-sm text-muted-foreground">
+        {questions.map((question) => (
+          <li key={question}>{question}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const RECOMMENDATION_CONFIG = {
+  recommended: {
+    label: "Vale a pena se candidatar",
+    icon: CheckCircle2,
+    className:
+      "border-emerald-600/30 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+  },
+  possible: {
+    label: "Compatibilidade parcial — avalie com cuidado",
+    icon: AlertTriangle,
+    className:
+      "border-amber-600/30 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
+  },
+  not_recommended: {
+    label: "Provavelmente não vale a pena agora",
+    icon: XCircle,
+    className:
+      "border-red-600/30 bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+  },
+} satisfies Record<
+  Recommendation["verdict"],
+  { label: string; icon: typeof CheckCircle2; className: string }
+>;
+
+function RecommendationBlock({
+  recommendation,
+}: {
+  recommendation: Recommendation;
+}) {
+  const config = RECOMMENDATION_CONFIG[recommendation.verdict];
+  const Icon = config.icon;
+
+  return (
+    <div className={`rounded-lg border p-4 ${config.className}`}>
+      <div className="flex items-center gap-2 font-semibold">
+        <Icon className="size-4 shrink-0" />
+        {config.label}
+      </div>
+      <p className="pt-1 text-sm opacity-90">{recommendation.reasoning}</p>
+    </div>
   );
 }
 
