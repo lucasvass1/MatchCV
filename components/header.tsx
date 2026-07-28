@@ -25,6 +25,9 @@ export function Header() {
             <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/comparar" />}>
               Comparar versões
             </Button>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/curriculos" />}>
+              Meus currículos
+            </Button>
             <span className="hidden text-sm text-muted-foreground sm:inline">
               {session.user.name ?? session.user.email}
             </span>

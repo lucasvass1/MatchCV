@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getOwnedAnalysis, getOrGenerateAdaptedResume } from "@/lib/analysis-repository";
-import { buildAdaptedResumeDocx } from "@/lib/generate-resume-docx";
+import { adaptedResumeToPlainText } from "@/lib/adapted-resume-text";
 
 export const runtime = "nodejs";
 
+// Protegido também pelo middleware (matcher "/api/analysis/:path*"); a
+// checagem de sessão aqui é a garantia final caso a rota seja chamada
+// diretamente sem passar pelo middleware.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -22,20 +25,16 @@ export async function GET(
 
   try {
     const adaptedResume = await getOrGenerateAdaptedResume(analysis);
-    const buffer = await buildAdaptedResumeDocx(adaptedResume);
-
-    return new NextResponse(new Uint8Array(buffer), {
-      status: 200,
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": 'attachment; filename="curriculo-adaptado.docx"',
-      },
+    return NextResponse.json({
+      resumeText: adaptedResumeToPlainText(adaptedResume),
+      score: analysis.score,
+      jobDescriptionText: analysis.jobDescriptionText,
+      createdAt: analysis.createdAt,
     });
   } catch (error) {
-    console.error("Erro ao gerar currículo adaptado:", error);
-    const message =
-      error instanceof Error ? error.message : "Erro inesperado ao gerar o currículo adaptado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro inesperado." },
+      { status: 500 }
+    );
   }
 }

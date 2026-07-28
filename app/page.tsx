@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AnalysisWorkspace } from "@/components/analysis-workspace";
 
 export default function Home() {
@@ -14,7 +15,9 @@ export default function Home() {
       </div>
 
       <div className="mt-10 w-full flex justify-center">
-        <AnalysisWorkspace />
+        <Suspense>
+          <AnalysisWorkspace />
+        </Suspense>
       </div>
     </div>
   );

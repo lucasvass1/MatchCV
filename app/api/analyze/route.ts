@@ -23,11 +23,15 @@ export async function POST(request: Request) {
   }
 
   const resume = formData.get("resume");
+  const reusedResumeText = formData.get("resumeText");
   const jobDescription = formData.get("jobDescription");
 
-  if (!(resume instanceof File)) {
+  if (!(resume instanceof File) && typeof reusedResumeText !== "string") {
     return NextResponse.json(
-      { error: "Envie um arquivo de currículo (PDF ou DOCX)." },
+      {
+        error:
+          "Envie um arquivo de currículo (PDF ou DOCX) ou reutilize um currículo salvo.",
+      },
       { status: 400 }
     );
   }
@@ -41,26 +45,30 @@ export async function POST(request: Request) {
     );
   }
 
-  const hasAllowedExtension = ALLOWED_EXTENSIONS.some((ext) =>
-    resume.name.toLowerCase().endsWith(ext)
-  );
-  if (!hasAllowedExtension) {
-    return NextResponse.json(
-      { error: "Formato de arquivo não suportado. Envie um PDF ou DOCX." },
-      { status: 400 }
+  if (resume instanceof File) {
+    const hasAllowedExtension = ALLOWED_EXTENSIONS.some((ext) =>
+      resume.name.toLowerCase().endsWith(ext)
     );
-  }
+    if (!hasAllowedExtension) {
+      return NextResponse.json(
+        { error: "Formato de arquivo não suportado. Envie um PDF ou DOCX." },
+        { status: 400 }
+      );
+    }
 
-  if (resume.size > MAX_FILE_SIZE_BYTES) {
-    return NextResponse.json(
-      { error: "O arquivo do currículo deve ter no máximo 5MB." },
-      { status: 400 }
-    );
+    if (resume.size > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: "O arquivo do currículo deve ter no máximo 5MB." },
+        { status: 400 }
+      );
+    }
   }
 
   try {
-    const buffer = Buffer.from(await resume.arrayBuffer());
-    const resumeText = await extractTextFromFile(buffer, resume.name);
+    const resumeText =
+      resume instanceof File
+        ? await extractTextFromFile(Buffer.from(await resume.arrayBuffer()), resume.name)
+        : (reusedResumeText as string).trim();
 
     if (resumeText.length < 50) {
       return NextResponse.json(

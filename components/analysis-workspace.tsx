@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,8 @@ import {
   MessagesSquare,
   Download,
   MessageCircle,
+  FileText,
+  X,
 } from "lucide-react";
 import type {
   AnalysisPreview,
@@ -37,9 +39,18 @@ import type {
 const ACCEPTED_EXTENSIONS = ".pdf,.docx";
 const PENDING_ANALYSIS_ID_KEY = "matchcv:pendingAnalysisId";
 
+type ReusedResume = {
+  resumeText: string;
+  jobDescriptionText: string;
+  score: number;
+};
+
 export function AnalysisWorkspace() {
   const { status } = useSession();
   const isAuthenticated = status === "authenticated";
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const reuseAnalysisId = searchParams.get("reuseAnalysisId");
 
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
@@ -53,10 +64,49 @@ export function AnalysisWorkspace() {
       ? null
       : sessionStorage.getItem(PENDING_ANALYSIS_ID_KEY)
   );
+  const [reusedResume, setReusedResume] = useState<ReusedResume | null>(null);
+  const [isLoadingReuse, setIsLoadingReuse] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const claimedIdRef = useRef<string | null>(null);
+  const reusedIdRef = useRef<string | null>(null);
 
   const isClaiming = isAuthenticated && pendingId !== null && !result;
+
+  // Carrega o texto de um currículo adaptado salvo (biblioteca de currículos)
+  // para usar como ponto de partida desta análise, em vez de fazer upload de
+  // arquivo. A ref evita recarregar o mesmo id duas vezes (ex: StrictMode).
+  useEffect(() => {
+    if (!reuseAnalysisId || reusedIdRef.current === reuseAnalysisId) return;
+    reusedIdRef.current = reuseAnalysisId;
+    setIsLoadingReuse(true);
+
+    fetch(`/api/analysis/${reuseAnalysisId}/adapted-resume/text`)
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error ?? "Não foi possível carregar o currículo salvo.");
+        }
+        setReusedResume({
+          resumeText: data.resumeText as string,
+          jobDescriptionText: data.jobDescriptionText as string,
+          score: data.score as number,
+        });
+      })
+      .catch((err) => {
+        setError(
+          err instanceof Error ? err.message : "Não foi possível carregar o currículo salvo."
+        );
+      })
+      .finally(() => {
+        setIsLoadingReuse(false);
+      });
+  }, [reuseAnalysisId]);
+
+  function clearReusedResume() {
+    setReusedResume(null);
+    reusedIdRef.current = null;
+    router.replace("/");
+  }
 
   // Depois do login, troca o id da análise anônima (salvo no navegador) pelo
   // resultado completo no servidor — nenhum dado protegido chega a ficar no
@@ -94,7 +144,7 @@ export function AnalysisWorkspace() {
     event.preventDefault();
     setError(null);
 
-    if (!file) {
+    if (!file && !reusedResume) {
       setError("Selecione o arquivo do seu currículo (PDF ou DOCX).");
       return;
     }
@@ -110,7 +160,11 @@ export function AnalysisWorkspace() {
 
     try {
       const formData = new FormData();
-      formData.append("resume", file);
+      if (reusedResume) {
+        formData.append("resumeText", reusedResume.resumeText);
+      } else if (file) {
+        formData.append("resume", file);
+      }
       formData.append("jobDescription", jobDescription);
 
       const response = await fetch("/api/analyze", {
@@ -134,6 +188,12 @@ export function AnalysisWorkspace() {
         sessionStorage.setItem(PENDING_ANALYSIS_ID_KEY, data.analysisId as string);
         setPendingId(data.analysisId as string);
       }
+
+      if (reusedResume) {
+        setReusedResume(null);
+        reusedIdRef.current = null;
+        router.replace("/");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
@@ -153,20 +213,45 @@ export function AnalysisWorkspace() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="resume" className="text-sm font-medium">
-                Currículo (PDF ou DOCX)
-              </label>
-              <input
-                ref={fileInputRef}
-                id="resume"
-                name="resume"
-                type="file"
-                accept={ACCEPTED_EXTENSIONS}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="cursor-pointer rounded-md border border-input bg-transparent text-sm file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-secondary/80"
-              />
-            </div>
+            {isLoadingReuse ? (
+              <div className="flex items-center gap-2 rounded-lg border p-4 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Carregando currículo salvo...
+              </div>
+            ) : reusedResume ? (
+              <div className="flex items-start justify-between gap-3 rounded-lg border bg-muted/50 p-4">
+                <div className="flex items-start gap-2">
+                  <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <p className="text-sm">
+                    Reutilizando um currículo adaptado ({reusedResume.score}% de
+                    compatibilidade na vaga original) como ponto de partida.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearReusedResume}
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  aria-label="Trocar currículo"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <label htmlFor="resume" className="text-sm font-medium">
+                  Currículo (PDF ou DOCX)
+                </label>
+                <input
+                  ref={fileInputRef}
+                  id="resume"
+                  name="resume"
+                  type="file"
+                  accept={ACCEPTED_EXTENSIONS}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="cursor-pointer rounded-md border border-input bg-transparent text-sm file:mr-4 file:cursor-pointer file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-secondary/80"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <label htmlFor="jobDescription" className="text-sm font-medium">
