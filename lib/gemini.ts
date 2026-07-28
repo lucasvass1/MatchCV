@@ -142,7 +142,13 @@ const responseSchema = {
   ],
 };
 
-async function callGemini(prompt: string, schema: object): Promise<string> {
+type GeminiContent = { role: "user" | "model"; parts: { text: string }[] };
+
+async function callGemini(
+  contents: string | GeminiContent[],
+  schema: object,
+  systemInstruction?: string
+): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY não configurada no servidor.");
@@ -154,8 +160,9 @@ async function callGemini(prompt: string, schema: object): Promise<string> {
   try {
     response = await ai.models.generateContent({
       model: MODEL,
-      contents: prompt,
+      contents,
       config: {
+        ...(systemInstruction ? { systemInstruction } : {}),
         responseMimeType: "application/json",
         responseSchema: schema,
       },
@@ -389,4 +396,149 @@ Diferenças já identificadas nas palavras-chave entre as duas análises:
 
   const text = await callGemini(prompt, comparisonSchema);
   return JSON.parse(text) as ComparisonInsight;
+}
+
+export type InterviewMessageRole = "user" | "model";
+
+export type InterviewMessage = {
+  role: InterviewMessageRole;
+  content: string;
+};
+
+export type InterviewContext = {
+  resumeText: string;
+  jobDescriptionText: string;
+  strengths: string[];
+  weaknesses: string[];
+};
+
+export type InterviewTurn = {
+  message: string;
+  isFinalQuestion: boolean;
+};
+
+const interviewTurnSchema = {
+  type: Type.OBJECT,
+  properties: {
+    message: {
+      type: Type.STRING,
+      description:
+        "Próxima pergunta (ou breve reação à resposta anterior seguida de uma nova pergunta) do entrevistador para o candidato, em português.",
+    },
+    isFinalQuestion: {
+      type: Type.BOOLEAN,
+      description:
+        "true somente se esta for a última pergunta da entrevista, após cobrir bem tanto aspectos técnicos quanto comportamentais (normalmente entre 5 e 7 perguntas no total).",
+    },
+  },
+  required: ["message", "isFinalQuestion"],
+};
+
+function buildInterviewSystemInstruction(context: InterviewContext): string {
+  return `Você é um entrevistador de RH experiente, conduzindo uma simulação de entrevista de emprego em português para a vaga abaixo, considerando o currículo do candidato e a análise de compatibilidade já feita.
+
+Regras:
+- Faça UMA pergunta por vez, nunca várias de uma vez.
+- Alterne entre perguntas técnicas (relacionadas às tecnologias e requisitos da vaga) e perguntas comportamentais.
+- Priorize investigar as lacunas identificadas (${context.weaknesses.join("; ") || "nenhuma lacuna relevante"}) e validar os pontos fortes (${context.strengths.join("; ") || "nenhum ponto forte relevante"}).
+- Antes da próxima pergunta, reaja em uma frase curta à resposta anterior do candidato, mas nunca avalie, corrija ou dê a resposta certa durante a entrevista — a avaliação final acontece só depois, em um feedback separado.
+- Depois de cobrir bem o técnico e o comportamental (normalmente entre 5 e 7 perguntas), marque isFinalQuestion como true na pergunta que encerra a entrevista.
+- Nunca saia do personagem de entrevistador.
+
+Vaga:
+"""
+${context.jobDescriptionText}
+"""
+
+Currículo do candidato:
+"""
+${context.resumeText}
+"""`;
+}
+
+export async function generateInterviewTurn(
+  context: InterviewContext,
+  history: InterviewMessage[]
+): Promise<InterviewTurn> {
+  const seed: InterviewMessage[] =
+    history.length > 0
+      ? history
+      : [{ role: "user", content: "Vamos começar a entrevista. Faça a primeira pergunta." }];
+
+  const contents: GeminiContent[] = seed.map((m) => ({
+    role: m.role,
+    parts: [{ text: m.content }],
+  }));
+
+  const text = await callGemini(
+    contents,
+    interviewTurnSchema,
+    buildInterviewSystemInstruction(context)
+  );
+  return JSON.parse(text) as InterviewTurn;
+}
+
+export type InterviewRating = "strong" | "average" | "weak";
+
+export type InterviewFeedback = {
+  summary: string;
+  strengths: string[];
+  improvementAreas: string[];
+  rating: InterviewRating;
+};
+
+const interviewFeedbackSchema = {
+  type: Type.OBJECT,
+  properties: {
+    summary: {
+      type: Type.STRING,
+      description: "Resumo objetivo do desempenho do candidato na entrevista simulada.",
+    },
+    strengths: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Pontos fortes demonstrados nas respostas do candidato, com exemplos concretos.",
+    },
+    improvementAreas: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "Pontos a melhorar nas respostas, com sugestões concretas e acionáveis (não genéricas).",
+    },
+    rating: {
+      type: Type.STRING,
+      enum: ["strong", "average", "weak"],
+      description: "Avaliação geral honesta do desempenho na entrevista.",
+    },
+  },
+  required: ["summary", "strengths", "improvementAreas", "rating"],
+};
+
+export async function generateInterviewFeedback(
+  context: InterviewContext,
+  history: InterviewMessage[]
+): Promise<InterviewFeedback> {
+  const transcript = history
+    .map((m) => `${m.role === "model" ? "Entrevistador" : "Candidato"}: ${m.content}`)
+    .join("\n\n");
+
+  const prompt = `Você é um especialista em recrutamento avaliando o desempenho de um candidato em uma entrevista simulada para a vaga abaixo. Avalie com base apenas nas respostas realmente dadas na conversa, sem inventar informações.
+
+Regras:
+- Seja honesto: se as respostas foram fracas, vagas ou incompletas, diga isso claramente em vez de suavizar.
+- Cite exemplos concretos das falas do candidato ao explicar pontos fortes e fracos.
+- As sugestões de melhoria devem ser acionáveis (ex: "detalhe o impacto em números ao falar do projeto X", não apenas "seja mais específico").
+
+Vaga:
+"""
+${context.jobDescriptionText}
+"""
+
+Transcrição da entrevista simulada:
+"""
+${transcript}
+"""`;
+
+  const text = await callGemini(prompt, interviewFeedbackSchema);
+  return JSON.parse(text) as InterviewFeedback;
 }

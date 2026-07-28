@@ -6,7 +6,11 @@ const AUTH_ROUTES = ["/login", "/register"];
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/api/analysis") || pathname.startsWith("/api/job-applications")) {
+  if (
+    pathname.startsWith("/api/analysis") ||
+    pathname.startsWith("/api/job-applications") ||
+    pathname.startsWith("/api/interview")
+  ) {
     if (!req.auth) {
       return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
@@ -14,7 +18,9 @@ export default auth((req) => {
   }
 
   if (
-    (pathname.startsWith("/vagas") || pathname.startsWith("/comparar")) &&
+    (pathname.startsWith("/vagas") ||
+      pathname.startsWith("/comparar") ||
+      pathname.startsWith("/entrevista")) &&
     !req.auth
   ) {
     const loginUrl = new URL("/login", req.nextUrl);
@@ -35,7 +41,9 @@ export const config = {
     "/register",
     "/vagas/:path*",
     "/comparar/:path*",
+    "/entrevista/:path*",
     "/api/analysis/:path*",
     "/api/job-applications/:path*",
+    "/api/interview/:path*",
   ],
 };

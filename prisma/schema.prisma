@@ -21,10 +21,11 @@ model User {
   password      String?
   createdAt     DateTime  @default(now())
 
-  accounts        Account[]
-  sessions        Session[]
-  analyses        Analysis[]
-  jobApplications JobApplication[]
+  accounts          Account[]
+  sessions          Session[]
+  analyses          Analysis[]
+  jobApplications   JobApplication[]
+  interviewSessions InterviewSession[]
 }
 
 model Account {
@@ -92,7 +93,8 @@ model Analysis {
 
   createdAt DateTime @default(now())
 
-  jobApplications JobApplication[]
+  jobApplications   JobApplication[]
+  interviewSessions InterviewSession[]
 
   @@index([userId])
 }
@@ -116,6 +118,42 @@ model JobApplication {
   notes   String? @db.Text
 
   appliedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([analysisId])
+}
+
+// Simulador de entrevista (ver lib/gemini.ts): a IA assume o papel de
+// entrevistador, usando a vaga e o currículo da análise vinculada como
+// contexto, e ao final gera um feedback estruturado sobre o desempenho.
+model InterviewSession {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  analysisId String?
+  analysis   Analysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+
+  // Snapshot do contexto da análise de origem no momento da criação, para a
+  // entrevista continuar funcionando mesmo que a análise seja excluída depois
+  // (onDelete: SetNull acima) e para não precisar buscá-la a cada turno.
+  resumeText         String   @db.Text
+  jobDescriptionText String   @db.Text
+  strengths          String[]
+  weaknesses         String[]
+
+  // Array de { role: "user" | "model", content: string }, em ordem
+  // cronológica — mesmo formato aceito pela API do Gemini para histórico
+  // de conversa multi-turno.
+  messages Json
+
+  feedbackSummary          String?  @db.Text
+  feedbackStrengths        String[]
+  feedbackImprovementAreas String[]
+  feedbackRating           String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

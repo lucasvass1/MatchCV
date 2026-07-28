@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +26,7 @@ import {
   BookOpen,
   MessagesSquare,
   Download,
+  MessageCircle,
 } from "lucide-react";
 import type {
   AnalysisPreview,
@@ -226,7 +228,10 @@ function FullResultCard({
         <CardContent className="flex flex-col gap-6">
           <ScoreBlock score={result.score} />
 
-          <DownloadAdaptedResumeButton analysisId={analysisId} />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <DownloadAdaptedResumeButton analysisId={analysisId} />
+            <StartInterviewButton analysisId={analysisId} />
+          </div>
 
           {result.keywordsMatched.length > 0 && (
             <MatchedKeywordsBlock keywords={result.keywordsMatched.slice(0, 3)} />
@@ -390,6 +395,59 @@ function DownloadAdaptedResumeButton({ analysisId }: { analysisId: string }) {
           <Download className="size-4" />
         )}
         {isDownloading ? "Gerando currículo adaptado..." : "Baixar currículo adaptado"}
+      </Button>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
+      )}
+    </div>
+  );
+}
+
+function StartInterviewButton({ analysisId }: { analysisId: string }) {
+  const router = useRouter();
+  const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleStart() {
+    setIsStarting(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/interview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysisId }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "Não foi possível iniciar a entrevista.");
+      }
+
+      router.push(`/entrevista/${data.interviewSession.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+      setIsStarting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Button
+        variant="outline"
+        className="w-full"
+        disabled={isStarting}
+        onClick={handleStart}
+      >
+        {isStarting ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <MessageCircle className="size-4" />
+        )}
+        {isStarting ? "Preparando entrevista..." : "Simular entrevista"}
       </Button>
       {error && (
         <Alert variant="destructive">
