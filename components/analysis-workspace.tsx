@@ -24,6 +24,7 @@ import {
   XCircle,
   BookOpen,
   MessagesSquare,
+  Download,
 } from "lucide-react";
 import type {
   AnalysisPreview,
@@ -43,6 +44,7 @@ export function AnalysisWorkspace() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [preview, setPreview] = useState<AnalysisPreview | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(() =>
     typeof window === "undefined"
@@ -70,6 +72,7 @@ export function AnalysisWorkspace() {
           throw new Error(data.error ?? "Não foi possível recuperar a análise.");
         }
         setResult(data.result as AnalysisResult);
+        setAnalysisId(data.analysisId as string);
         setPreview(null);
       })
       .catch((err) => {
@@ -100,6 +103,7 @@ export function AnalysisWorkspace() {
 
     setIsLoading(true);
     setResult(null);
+    setAnalysisId(null);
     setPreview(null);
 
     try {
@@ -120,6 +124,7 @@ export function AnalysisWorkspace() {
 
       if (isAuthenticated) {
         setResult(data.result as AnalysisResult);
+        setAnalysisId(data.analysisId as string);
         sessionStorage.removeItem(PENDING_ANALYSIS_ID_KEY);
         setPendingId(null);
       } else {
@@ -198,13 +203,19 @@ export function AnalysisWorkspace() {
         </Card>
       )}
 
-      {result && <FullResultCard result={result} />}
+      {result && analysisId && <FullResultCard result={result} analysisId={analysisId} />}
       {!result && preview && <PreviewResultCard preview={preview} />}
     </div>
   );
 }
 
-function FullResultCard({ result }: { result: AnalysisResult }) {
+function FullResultCard({
+  result,
+  analysisId,
+}: {
+  result: AnalysisResult;
+  analysisId: string;
+}) {
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -214,6 +225,8 @@ function FullResultCard({ result }: { result: AnalysisResult }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <ScoreBlock score={result.score} />
+
+          <DownloadAdaptedResumeButton analysisId={analysisId} />
 
           {result.keywordsMatched.length > 0 && (
             <MatchedKeywordsBlock keywords={result.keywordsMatched.slice(0, 3)} />
@@ -330,6 +343,60 @@ function FullResultCard({ result }: { result: AnalysisResult }) {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function DownloadAdaptedResumeButton({ analysisId }: { analysisId: string }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    setIsDownloading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/analysis/${analysisId}/adapted-resume`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error ?? "Não foi possível gerar o currículo adaptado.");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "curriculo-adaptado.docx";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Button
+        variant="outline"
+        className="w-full"
+        disabled={isDownloading}
+        onClick={handleDownload}
+      >
+        {isDownloading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Download className="size-4" />
+        )}
+        {isDownloading ? "Gerando currículo adaptado..." : "Baixar currículo adaptado"}
+      </Button>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertTitle>{error}</AlertTitle>
+        </Alert>
+      )}
     </div>
   );
 }

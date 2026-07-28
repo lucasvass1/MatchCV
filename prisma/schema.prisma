@@ -86,6 +86,9 @@ model Analysis {
   recommendationVerdict   String
   recommendationReasoning String @db.Text
 
+  // AdaptedResume (ver lib/gemini.ts), gerado sob demanda ao baixar o currículo adaptado
+  adaptedResume Json?
+
   createdAt DateTime @default(now())
 
   @@index([userId])
