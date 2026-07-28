@@ -13,7 +13,10 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/vagas") && !req.auth) {
+  if (
+    (pathname.startsWith("/vagas") || pathname.startsWith("/comparar")) &&
+    !req.auth
+  ) {
     const loginUrl = new URL("/login", req.nextUrl);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
@@ -31,6 +34,7 @@ export const config = {
     "/login",
     "/register",
     "/vagas/:path*",
+    "/comparar/:path*",
     "/api/analysis/:path*",
     "/api/job-applications/:path*",
   ],

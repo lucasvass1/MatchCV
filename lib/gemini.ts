@@ -319,3 +319,74 @@ ${jobDescription}
   const text = await callGemini(prompt, adaptedResumeSchema);
   return JSON.parse(text) as AdaptedResume;
 }
+
+export type ComparisonSnapshot = {
+  score: number;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+};
+
+export type ComparisonKeywordDiff = {
+  newlyMatched: string[];
+  resolvedGaps: string[];
+  newGaps: string[];
+  stillMissing: string[];
+};
+
+export type ComparisonInsight = {
+  summary: string;
+  keyChanges: string[];
+};
+
+const comparisonSchema = {
+  type: Type.OBJECT,
+  properties: {
+    summary: {
+      type: Type.STRING,
+      description:
+        "Resumo objetivo, em 2-4 frases, da evolução entre as duas análises, citando os principais fatores que explicam a diferença de score.",
+    },
+    keyChanges: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "Lista das mudanças específicas (novas palavras-chave, pontos fortes ganhos/perdidos, lacunas resolvidas ou surgidas) que mais contribuíram para a diferença de score.",
+    },
+  },
+  required: ["summary", "keyChanges"],
+};
+
+export async function compareAnalyses(
+  previous: ComparisonSnapshot,
+  current: ComparisonSnapshot,
+  keywordDiff: ComparisonKeywordDiff
+): Promise<ComparisonInsight> {
+  const scoreDelta = current.score - previous.score;
+
+  const prompt = `Você é um especialista em recrutamento. Compare duas análises de compatibilidade feitas para o mesmo candidato em momentos diferentes e explique objetivamente o que mudou entre elas.
+
+Regras:
+- Baseie-se apenas nos dados fornecidos abaixo, não invente mudanças que não estão listadas.
+- Seja específico: cite palavras-chave, pontos fortes ou fracos concretos, nunca frases vagas como "o currículo melhorou".
+- Se o score caiu ou ficou igual, explique isso honestamente, sem suavizar.
+
+Análise anterior (score ${previous.score}):
+- Resumo: ${previous.summary}
+- Pontos fortes: ${previous.strengths.join("; ") || "nenhum"}
+- Pontos fracos: ${previous.weaknesses.join("; ") || "nenhum"}
+
+Análise atual (score ${current.score}, variação de ${scoreDelta >= 0 ? "+" : ""}${scoreDelta} pontos):
+- Resumo: ${current.summary}
+- Pontos fortes: ${current.strengths.join("; ") || "nenhum"}
+- Pontos fracos: ${current.weaknesses.join("; ") || "nenhum"}
+
+Diferenças já identificadas nas palavras-chave entre as duas análises:
+- Novas palavras-chave presentes agora: ${keywordDiff.newlyMatched.join(", ") || "nenhuma"}
+- Lacunas resolvidas (antes ausentes, agora presentes): ${keywordDiff.resolvedGaps.join(", ") || "nenhuma"}
+- Novas lacunas (não apareciam antes): ${keywordDiff.newGaps.join(", ") || "nenhuma"}
+- Lacunas que continuam ausentes: ${keywordDiff.stillMissing.join(", ") || "nenhuma"}`;
+
+  const text = await callGemini(prompt, comparisonSchema);
+  return JSON.parse(text) as ComparisonInsight;
+}
