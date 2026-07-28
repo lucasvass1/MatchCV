@@ -28,6 +28,14 @@ export async function saveAnalysisForUser(
   });
 }
 
+export async function listAnalysesForUser(userId: string) {
+  return prisma.analysis.findMany({
+    where: { userId },
+    select: { id: true, score: true, jobDescriptionText: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function getOwnedAnalysis(id: string, userId: string) {
   const analysis = await prisma.analysis.findUnique({ where: { id } });
   if (!analysis || analysis.userId !== userId) return null;

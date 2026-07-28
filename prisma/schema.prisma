@@ -21,9 +21,10 @@ model User {
   password      String?
   createdAt     DateTime  @default(now())
 
-  accounts  Account[]
-  sessions  Session[]
-  analyses  Analysis[]
+  accounts        Account[]
+  sessions        Session[]
+  analyses        Analysis[]
+  jobApplications JobApplication[]
 }
 
 model Account {
@@ -70,14 +71,14 @@ model Analysis {
   resumeText         String @db.Text
   jobDescriptionText String @db.Text
 
-  score       Int
-  summary     String   @db.Text
-  keywordsMatched String[]
-  keywordsMissing String[]
-  strengths       String[]
-  weaknesses      String[]
-  improvementTips String[]
-  interviewTips   String[]
+  score            Int
+  summary          String   @db.Text
+  keywordsMatched  String[]
+  keywordsMissing  String[]
+  strengths        String[]
+  weaknesses       String[]
+  improvementTips  String[]
+  interviewTips    String[]
   studySuggestions String[]
 
   // Array de { question: string, type: "technical" | "behavioral" }
@@ -91,5 +92,33 @@ model Analysis {
 
   createdAt DateTime @default(now())
 
+  jobApplications JobApplication[]
+
   @@index([userId])
+}
+
+// Status possíveis (ver lib/job-application.ts): applied, in_process,
+// interview, positive_response, rejected. Mantido como String, não enum do
+// Prisma, para seguir o mesmo padrão de recommendationVerdict acima.
+model JobApplication {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Análise (CV + vaga) que originou esta candidatura, se houver.
+  analysisId String?
+  analysis   Analysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+
+  company String
+  role    String
+  status  String  @default("applied")
+  jobUrl  String?
+  notes   String? @db.Text
+
+  appliedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([analysisId])
 }

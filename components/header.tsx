@@ -19,6 +19,9 @@ export function Header() {
       <div className="flex items-center gap-3">
         {status === "loading" ? null : session?.user ? (
           <>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/vagas" />}>
+              Minhas vagas
+            </Button>
             <span className="hidden text-sm text-muted-foreground sm:inline">
               {session.user.name ?? session.user.email}
             </span>
