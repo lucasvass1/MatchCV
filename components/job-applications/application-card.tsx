@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { APPLICATION_STATUSES, APPLICATION_STATUS_LABEL } from "@/lib/job-application";
+import { formatDate } from "@/lib/utils";
 import type { JobApplicationDTO } from "@/components/job-applications/types";
 
 export function ApplicationCard({
@@ -123,7 +124,7 @@ export function ApplicationCard({
         )}
 
         <p className="text-xs text-muted-foreground">
-          Aplicado em {new Date(jobApplication.appliedAt).toLocaleDateString("pt-BR")}
+          Aplicado em {formatDate(jobApplication.appliedAt)}
         </p>
 
         <SelectNative

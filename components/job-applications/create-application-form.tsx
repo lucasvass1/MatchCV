@@ -10,11 +10,12 @@ import { SelectNative } from "@/components/ui/select-native";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, AlertTriangle, Loader2, Trash2, X } from "lucide-react";
 import { APPLICATION_STATUSES, APPLICATION_STATUS_LABEL } from "@/lib/job-application";
+import { formatDate } from "@/lib/utils";
 import type { AnalysisOption, JobApplicationDTO } from "@/components/job-applications/types";
 
 function analysisLabel(analysis: AnalysisOption) {
   const preview = analysis.jobDescriptionText.trim().slice(0, 60);
-  const date = new Date(analysis.createdAt).toLocaleDateString("pt-BR");
+  const date = formatDate(analysis.createdAt);
   return `${date} · ${analysis.score}% · ${preview}${preview.length === 60 ? "…" : ""}`;
 }
 

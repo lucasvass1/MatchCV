@@ -16,12 +16,13 @@ import { ScoreBar, scoreTextClass } from "@/components/score-bar";
 import { AnimatedNumber } from "@/components/animated-number";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, ArrowRight, Loader2 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 import type { AnalysisOption } from "@/components/job-applications/types";
 import type { AnalysisComparison } from "@/lib/analysis-comparison";
 
 function analysisLabel(analysis: AnalysisOption) {
   const preview = analysis.jobDescriptionText.trim().slice(0, 60);
-  const date = new Date(analysis.createdAt).toLocaleDateString("pt-BR");
+  const date = formatDate(analysis.createdAt);
   return `${date} · ${analysis.score}% · ${preview}${preview.length === 60 ? "…" : ""}`;
 }
 
@@ -155,12 +156,12 @@ function ComparisonResult({ comparison }: { comparison: AnalysisComparison }) {
         <CardContent>
           <div className="flex items-center gap-4 sm:gap-8">
             <ScoreColumn
-              label={new Date(previous.createdAt).toLocaleDateString("pt-BR")}
+              label={formatDate(previous.createdAt)}
               score={previous.score}
             />
             <ArrowRight className="size-5 shrink-0 text-muted-foreground" />
             <ScoreColumn
-              label={new Date(current.createdAt).toLocaleDateString("pt-BR")}
+              label={formatDate(current.createdAt)}
               score={current.score}
             />
             <div className="ml-auto text-right">

@@ -17,6 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 import type { AdaptedResume } from "@/lib/gemini";
 
 export type ResumeLibraryItem = {
@@ -104,7 +105,7 @@ function ResumeLibraryCard({
   const [error, setError] = useState<string | null>(null);
 
   const jobPreview = resume.jobDescriptionText.trim().slice(0, 100);
-  const date = new Date(resume.createdAt).toLocaleDateString("pt-BR");
+  const date = formatDate(resume.createdAt);
 
   async function handleDownload() {
     setIsDownloading(true);

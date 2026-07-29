@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { AnalysisStats, KeywordStat, ScoreTimelinePoint } from "@/lib/analysis-stats";
+import { formatDate } from "@/lib/utils";
 
 export function ProgressDashboard({ stats }: { stats: AnalysisStats }) {
   if (stats.totalAnalyses === 0) {
@@ -139,10 +140,6 @@ const INNER_WIDTH = CHART_WIDTH - PADDING_LEFT - PADDING_RIGHT;
 const INNER_HEIGHT = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 const Y_TICKS = [0, 25, 50, 75, 100];
 
-function formatDate(date: Date) {
-  return new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-}
-
 function ScoreTimelineChart({
   timeline,
   averageScore,
@@ -270,7 +267,7 @@ function ScoreTimelineChart({
           textAnchor="start"
           className="fill-muted-foreground text-[10px]"
         >
-          {formatDate(points[0].createdAt)}
+          {formatDate(points[0].createdAt, { day: "2-digit", month: "2-digit" })}
         </text>
         {points.length > 1 && (
           <text
@@ -279,7 +276,7 @@ function ScoreTimelineChart({
             textAnchor="end"
             className="fill-muted-foreground text-[10px]"
           >
-            {formatDate(points[points.length - 1].createdAt)}
+            {formatDate(points[points.length - 1].createdAt, { day: "2-digit", month: "2-digit" })}
           </text>
         )}
       </svg>
@@ -294,7 +291,9 @@ function ScoreTimelineChart({
           }}
         >
           <p className="font-semibold text-popover-foreground">{hovered.score}%</p>
-          <p className="text-muted-foreground">{formatDate(hovered.createdAt)}</p>
+          <p className="text-muted-foreground">
+            {formatDate(hovered.createdAt, { day: "2-digit", month: "2-digit" })}
+          </p>
         </div>
       )}
     </div>
