@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { SelectNative } from "@/components/ui/select-native";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import {
@@ -127,17 +133,24 @@ export function ApplicationCard({
           Aplicado em {formatDate(jobApplication.appliedAt)}
         </p>
 
-        <SelectNative
+        <Select
           value={jobApplication.status}
           disabled={isChangingStatus}
-          onChange={(e) => handleStatusChange(e.target.value)}
+          onValueChange={(value) => value && handleStatusChange(value)}
         >
-          {APPLICATION_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {APPLICATION_STATUS_LABEL[status]}
-            </option>
-          ))}
-        </SelectNative>
+          <SelectTrigger className="w-full">
+            <SelectValue>
+              {(value: string) => APPLICATION_STATUS_LABEL[value as (typeof APPLICATION_STATUSES)[number]]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {APPLICATION_STATUSES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {APPLICATION_STATUS_LABEL[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {error && (
           <Alert variant="destructive">

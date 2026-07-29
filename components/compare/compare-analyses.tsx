@@ -10,7 +10,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { SelectNative } from "@/components/ui/select-native";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScoreBar, scoreTextClass } from "@/components/score-bar";
 import { AnimatedNumber } from "@/components/animated-number";
@@ -90,31 +96,41 @@ export function CompareAnalyses({ analyses }: { analyses: AnalysisOption[] }) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="previousId">Análise anterior</Label>
-              <SelectNative
-                id="previousId"
-                value={previousId}
-                onChange={(e) => setPreviousId(e.target.value)}
-              >
-                {analyses.map((analysis) => (
-                  <option key={analysis.id} value={analysis.id}>
-                    {analysisLabel(analysis)}
-                  </option>
-                ))}
-              </SelectNative>
+              <Select value={previousId} onValueChange={(value) => setPreviousId(value ?? "")}>
+                <SelectTrigger id="previousId" className="w-full">
+                  <SelectValue>
+                    {(value: string) =>
+                      analysisLabel(analyses.find((a) => a.id === value)!)
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {analyses.map((analysis) => (
+                    <SelectItem key={analysis.id} value={analysis.id}>
+                      {analysisLabel(analysis)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="currentId">Análise atual</Label>
-              <SelectNative
-                id="currentId"
-                value={currentId}
-                onChange={(e) => setCurrentId(e.target.value)}
-              >
-                {analyses.map((analysis) => (
-                  <option key={analysis.id} value={analysis.id}>
-                    {analysisLabel(analysis)}
-                  </option>
-                ))}
-              </SelectNative>
+              <Select value={currentId} onValueChange={(value) => setCurrentId(value ?? "")}>
+                <SelectTrigger id="currentId" className="w-full">
+                  <SelectValue>
+                    {(value: string) =>
+                      analysisLabel(analyses.find((a) => a.id === value)!)
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {analyses.map((analysis) => (
+                    <SelectItem key={analysis.id} value={analysis.id}>
+                      {analysisLabel(analysis)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

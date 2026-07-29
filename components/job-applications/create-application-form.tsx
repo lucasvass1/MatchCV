@@ -6,7 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SelectNative } from "@/components/ui/select-native";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, AlertTriangle, Loader2, Trash2, X } from "lucide-react";
 import { APPLICATION_STATUSES, APPLICATION_STATUS_LABEL } from "@/lib/job-application";
@@ -130,17 +136,23 @@ export function CreateApplicationForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="status">Status</Label>
-              <SelectNative
-                id="status"
+              <Select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as typeof status)}
+                onValueChange={(value) => setStatus(value as typeof status)}
               >
-                {APPLICATION_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {APPLICATION_STATUS_LABEL[s]}
-                  </option>
-                ))}
-              </SelectNative>
+                <SelectTrigger id="status" className="w-full">
+                  <SelectValue>
+                    {(value: string) => APPLICATION_STATUS_LABEL[value as (typeof APPLICATION_STATUSES)[number]]}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {APPLICATION_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {APPLICATION_STATUS_LABEL[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="jobUrl">Link da vaga (opcional)</Label>
@@ -158,23 +170,32 @@ export function CreateApplicationForm({
             <div className="flex flex-col gap-2">
               <Label htmlFor="analysisId">Currículo usado (opcional)</Label>
               <div className="flex gap-2">
-                <SelectNative
-                  id="analysisId"
-                  className="flex-1"
+                <Select
                   value={analysisId}
-                  onChange={(e) => {
-                    setAnalysisId(e.target.value);
+                  onValueChange={(value) => {
+                    setAnalysisId(value ?? "");
                     setConfirmingAnalysisDelete(false);
                     setDeleteAnalysisError(null);
                   }}
                 >
-                  <option value="">Nenhum</option>
-                  {analyses.map((analysis) => (
-                    <option key={analysis.id} value={analysis.id}>
-                      {analysisLabel(analysis)}
-                    </option>
-                  ))}
-                </SelectNative>
+                  <SelectTrigger id="analysisId" className="w-full flex-1">
+                    <SelectValue placeholder="Nenhum">
+                      {(value: string) =>
+                        value
+                          ? analysisLabel(analyses.find((a) => a.id === value)!)
+                          : "Nenhum"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {analyses.map((analysis) => (
+                      <SelectItem key={analysis.id} value={analysis.id}>
+                        {analysisLabel(analysis)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {analysisId && (
                   <Button
                     type="button"
