@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectNative } from "@/components/ui/select-native";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, AlertTriangle, Loader2, Trash2, X } from "lucide-react";
 import { APPLICATION_STATUSES, APPLICATION_STATUS_LABEL } from "@/lib/job-application";
 import type { AnalysisOption, JobApplicationDTO } from "@/components/job-applications/types";
 
@@ -22,10 +22,12 @@ export function CreateApplicationForm({
   analyses,
   onCreated,
   onCancel,
+  onAnalysisDeleted,
 }: {
   analyses: AnalysisOption[];
   onCreated: (jobApplication: JobApplicationDTO) => void;
   onCancel: () => void;
+  onAnalysisDeleted: (id: string) => void;
 }) {
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
@@ -35,6 +37,29 @@ export function CreateApplicationForm({
   const [analysisId, setAnalysisId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingAnalysisDelete, setConfirmingAnalysisDelete] = useState(false);
+  const [isDeletingAnalysis, setIsDeletingAnalysis] = useState(false);
+  const [deleteAnalysisError, setDeleteAnalysisError] = useState<string | null>(null);
+
+  async function handleDeleteAnalysis() {
+    if (!analysisId) return;
+    setIsDeletingAnalysis(true);
+    setDeleteAnalysisError(null);
+    try {
+      const response = await fetch(`/api/analysis/${analysisId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error ?? "Não foi possível excluir a análise.");
+      }
+      onAnalysisDeleted(analysisId);
+      setAnalysisId("");
+      setConfirmingAnalysisDelete(false);
+    } catch (err) {
+      setDeleteAnalysisError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setIsDeletingAnalysis(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -131,18 +156,82 @@ export function CreateApplicationForm({
           {analyses.length > 0 && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="analysisId">Currículo usado (opcional)</Label>
-              <SelectNative
-                id="analysisId"
-                value={analysisId}
-                onChange={(e) => setAnalysisId(e.target.value)}
-              >
-                <option value="">Nenhum</option>
-                {analyses.map((analysis) => (
-                  <option key={analysis.id} value={analysis.id}>
-                    {analysisLabel(analysis)}
-                  </option>
-                ))}
-              </SelectNative>
+              <div className="flex gap-2">
+                <SelectNative
+                  id="analysisId"
+                  className="flex-1"
+                  value={analysisId}
+                  onChange={(e) => {
+                    setAnalysisId(e.target.value);
+                    setConfirmingAnalysisDelete(false);
+                    setDeleteAnalysisError(null);
+                  }}
+                >
+                  <option value="">Nenhum</option>
+                  {analyses.map((analysis) => (
+                    <option key={analysis.id} value={analysis.id}>
+                      {analysisLabel(analysis)}
+                    </option>
+                  ))}
+                </SelectNative>
+                {analysisId && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    title="Excluir esta análise"
+                    onClick={() => setConfirmingAnalysisDelete(true)}
+                    disabled={isDeletingAnalysis}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+              </div>
+
+              {deleteAnalysisError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertTitle>{deleteAnalysisError}</AlertTitle>
+                </Alert>
+              )}
+
+              {confirmingAnalysisDelete && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="size-4" />
+                  <AlertTitle>Esta análise será apagada por completo</AlertTitle>
+                  <AlertDescription>
+                    Ela some da biblioteca, da comparação de versões e do gráfico em
+                    &quot;Meu progresso&quot;. Candidaturas vinculadas a ela continuam
+                    existindo, só perdem essa referência. Essa ação não pode ser desfeita.
+                  </AlertDescription>
+                  <div className="mt-2 flex justify-end gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => setConfirmingAnalysisDelete(false)}
+                      disabled={isDeletingAnalysis}
+                    >
+                      <X className="size-3" />
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="xs"
+                      onClick={handleDeleteAnalysis}
+                      disabled={isDeletingAnalysis}
+                    >
+                      {isDeletingAnalysis ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3" />
+                      )}
+                      Confirmar exclusão
+                    </Button>
+                  </div>
+                </Alert>
+              )}
             </div>
           )}
 

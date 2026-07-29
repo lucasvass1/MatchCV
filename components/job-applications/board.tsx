@@ -11,12 +11,13 @@ import { ApplicationCard } from "@/components/job-applications/application-card"
 
 export function JobApplicationsBoard({
   initialJobApplications,
-  analyses,
+  analyses: initialAnalyses,
 }: {
   initialJobApplications: JobApplicationDTO[];
   analyses: AnalysisOption[];
 }) {
   const [jobApplications, setJobApplications] = useState(initialJobApplications);
+  const [analyses, setAnalyses] = useState(initialAnalyses);
   const [search, setSearch] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
@@ -53,6 +54,15 @@ export function JobApplicationsBoard({
     setJobApplications((prev) => prev.filter((app) => app.id !== id));
   }
 
+  function handleAnalysisDeleted(id: string) {
+    setAnalyses((prev) => prev.filter((analysis) => analysis.id !== id));
+    setJobApplications((prev) =>
+      prev.map((app) =>
+        app.analysisId === id ? { ...app, analysisId: null, analysis: null } : app
+      )
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -76,6 +86,7 @@ export function JobApplicationsBoard({
           analyses={analyses}
           onCreated={handleCreated}
           onCancel={() => setIsCreating(false)}
+          onAnalysisDeleted={handleAnalysisDeleted}
         />
       )}
 
