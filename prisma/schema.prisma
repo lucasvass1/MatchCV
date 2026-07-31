@@ -131,6 +131,12 @@ model JobApplication {
   jobUrl  String?
   notes   String? @db.Text
 
+  // Preenchido quando o usuário sinaliza que mandou mensagem para o
+  // recrutador reforçando interesse na vaga (LinkedIn, e-mail etc.);
+  // null = ainda não contatado. A data serve tanto de flag quanto de
+  // registro de quando o contato foi feito.
+  recruiterContactedAt DateTime?
+
   appliedAt DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

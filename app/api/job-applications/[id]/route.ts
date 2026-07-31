@@ -27,10 +27,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
   }
 
-  const { company, role, status, jobUrl, notes, analysisId, appliedAt } = (body ?? {}) as Record<
-    string,
-    unknown
-  >;
+  const { company, role, status, jobUrl, notes, analysisId, appliedAt, recruiterContacted } =
+    (body ?? {}) as Record<string, unknown>;
 
   const data: Parameters<typeof updateJobApplication>[2] = {};
 
@@ -76,6 +74,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Data inválida." }, { status: 400 });
     }
     data.appliedAt = parsed;
+  }
+  if (recruiterContacted !== undefined) {
+    if (typeof recruiterContacted !== "boolean") {
+      return NextResponse.json({ error: "Valor de contato inválido." }, { status: 400 });
+    }
+    data.recruiterContactedAt = recruiterContacted ? new Date() : null;
   }
 
   const { id } = await params;

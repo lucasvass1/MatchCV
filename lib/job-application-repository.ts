@@ -9,6 +9,7 @@ export type CreateJobApplicationInput = {
   notes?: string | null;
   analysisId?: string | null;
   appliedAt?: Date;
+  recruiterContactedAt?: Date | null;
 };
 
 export type UpdateJobApplicationInput = {
@@ -19,6 +20,7 @@ export type UpdateJobApplicationInput = {
   notes?: string | null;
   analysisId?: string | null;
   appliedAt?: Date;
+  recruiterContactedAt?: Date | null;
 };
 
 export async function listJobApplicationsForUser(userId: string) {
@@ -60,6 +62,7 @@ export async function createJobApplication(
       jobUrl: input.jobUrl,
       notes: input.notes,
       analysisId: input.analysisId,
+      recruiterContactedAt: input.recruiterContactedAt ?? null,
       ...(input.appliedAt ? { appliedAt: input.appliedAt } : {}),
     },
   });

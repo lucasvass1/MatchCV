@@ -18,12 +18,14 @@ import {
   AlertCircle,
   ExternalLink,
   Loader2,
+  MessageCircle,
+  MessageCircleCheck,
   Pencil,
   Trash2,
   X,
 } from "lucide-react";
 import { APPLICATION_STATUSES, APPLICATION_STATUS_LABEL } from "@/lib/job-application";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import type { JobApplicationDTO } from "@/components/job-applications/types";
 
 export function ApplicationCard({
@@ -37,6 +39,7 @@ export function ApplicationCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingStatus, setIsChangingStatus] = useState(false);
+  const [isTogglingContact, setIsTogglingContact] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +67,19 @@ export function ApplicationCard({
       setError(err instanceof Error ? err.message : "Erro inesperado.");
     } finally {
       setIsChangingStatus(false);
+    }
+  }
+
+  async function handleToggleContact() {
+    setError(null);
+    setIsTogglingContact(true);
+    try {
+      const updated = await patch({ recruiterContacted: !jobApplication.recruiterContactedAt });
+      onUpdated(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado.");
+    } finally {
+      setIsTogglingContact(false);
     }
   }
 
@@ -132,6 +148,29 @@ export function ApplicationCard({
         <p className="text-xs text-muted-foreground">
           Aplicado em {formatDate(jobApplication.appliedAt)}
         </p>
+
+        <button
+          type="button"
+          onClick={handleToggleContact}
+          disabled={isTogglingContact}
+          className={cn(
+            "inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+            jobApplication.recruiterContactedAt
+              ? "border-emerald-600/20 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-950/60"
+              : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          {isTogglingContact ? (
+            <Loader2 className="size-3 animate-spin" />
+          ) : jobApplication.recruiterContactedAt ? (
+            <MessageCircleCheck className="size-3" />
+          ) : (
+            <MessageCircle className="size-3" />
+          )}
+          {jobApplication.recruiterContactedAt
+            ? `Recrutador contatado em ${formatDate(jobApplication.recruiterContactedAt)}`
+            : "Marcar contato com recrutador"}
+        </button>
 
         <Select
           value={jobApplication.status}

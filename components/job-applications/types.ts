@@ -17,6 +17,7 @@ export type JobApplicationDTO = {
   analysisId: string | null;
   analysis: { id: string; score: number } | null;
   appliedAt: Date;
+  recruiterContactedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
